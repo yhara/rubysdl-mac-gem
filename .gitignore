@@ -1,2 +1,4 @@
 pkg/
+doc/*.rd
+doc-en/*.rd
 rubysdl.gemspec
