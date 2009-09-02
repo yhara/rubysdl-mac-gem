@@ -1,7 +1,7 @@
 /*
   Ruby/SDL   Ruby extension library for SDL
 
-  Copyright (C) 2001-2004 Ohbayashi Ippei
+  Copyright (C) 2001-2007 Ohbayashi Ippei
   
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -20,7 +20,10 @@
 #ifdef HAVE_SMPEG
 #include "rubysdl.h"
 #include "smpeg/smpeg.h"
+
+#ifdef HAVE_SDL_MIXER
 #include "SDL_mixer.h"
+#endif
 
 static VALUE cMPEG;
 static VALUE cMPEGInfo;
@@ -59,7 +62,7 @@ static VALUE MPEG_s_alloc(VALUE klass)
 {
   MPEG* mpg = ALLOC(MPEG);
   mpg->smpeg = NULL;
-  mpg->audio_enable = 0;
+  mpg->audio_enable = 1;
   return Data_Wrap_Struct(klass, 0, MPEG_free, mpg);
 }
 
@@ -78,6 +81,11 @@ static VALUE MPEG_delete(VALUE self)
   return Qnil;
 }
 
+static VALUE MPEG_deleted(VALUE self)
+{
+  return INT2BOOL(Get_MPEG(self)->smpeg == NULL);
+}
+
 static VALUE MPEG_s_load(VALUE klass, VALUE filename)
 {
   SMPEG *smpeg;
@@ -86,14 +94,13 @@ static VALUE MPEG_s_load(VALUE klass, VALUE filename)
   rb_secure(4);
   SafeStringValue(filename);
   
-  smpeg = SMPEG_new(RSTRING(filename)->ptr, NULL, 0);
+  smpeg = SMPEG_new(RSTRING_PTR(filename), NULL, 0);
   if( SMPEG_error(smpeg) ){
     snprintf(error_msg, sizeof(error_msg), "Couldn't load %s: %s", 
-	     RSTRING(filename)->ptr, SMPEG_error(smpeg));
+	     RSTRING_PTR(filename), SMPEG_error(smpeg));
     SMPEG_delete(smpeg);
     rb_raise(eSDLError, "%s", error_msg);
   }
-
   return MPEG_create(smpeg);
 }
 
@@ -127,7 +134,6 @@ static VALUE MPEG_info(VALUE self)
 
 static VALUE MPEG_enableAudio(VALUE self, VALUE enable)
 {
-  SMPEG_enableaudio(Get_SMPEG(self), RTEST(enable));
   Get_MPEG(self)->audio_enable = RTEST(enable);
   return Qnil;
 }
@@ -151,8 +157,9 @@ static VALUE MPEG_setVolume(VALUE self, VALUE volume)
 
 static VALUE MPEG_setDisplay(VALUE self, VALUE dst)
 {
-  SMPEG_setdisplay(Get_SMPEG(self), Get_SDL_Surface(dst), NULL, NULL);
-  rb_iv_set(self, "@display", dst);
+  SMPEG_setdisplay(Get_SMPEG(self),
+                   Get_SDL_Surface(dst), NULL, NULL);
+  rb_iv_set(self, "display", dst);
   return Qnil;
 }
 
@@ -193,8 +200,8 @@ static VALUE MPEG_play(VALUE self)
   SMPEG *mpeg = Get_SMPEG(self);
   int use_audio;
   
+#ifdef HAVE_SDL_MIXER
   use_audio = Get_MPEG(self)->audio_enable && Mix_QuerySpec(NULL, NULL, NULL);
-
   if( use_audio ){
     SDL_AudioSpec audiofmt;
     Uint16 format;
@@ -213,7 +220,10 @@ static VALUE MPEG_play(VALUE self)
     Mix_HookMusic(SMPEG_playAudioSDL,  mpeg);
     SMPEG_enableaudio(mpeg,  1);
   }
-    
+#else
+  SMPEG_enableaudio(mpeg, Get_MPEG(self)->audio_enable);
+#endif
+  
   SMPEG_play(mpeg);
   return Qnil;
 }
@@ -227,7 +237,9 @@ static VALUE MPEG_pause(VALUE self)
 static VALUE MPEG_stop(VALUE self)
 {
   SMPEG_stop(Get_SMPEG(self));
-  Mix_HookMusic(NULL, NULL);
+#ifdef HAVE_SDL_MIXER
+  Mix_HookMusic(NULL,NULL);
+#endif
   return Qnil;
 }
 
@@ -252,6 +264,14 @@ static VALUE MPEG_skip(VALUE self, VALUE seconds)
 static VALUE MPEG_renderFrame(VALUE self, VALUE framenum)
 {
   SMPEG_renderFrame(Get_SMPEG(self), NUM2INT(framenum));
+  return Qnil;
+}
+
+static VALUE MPEG_renderFinal(VALUE self, VALUE dst,
+                              VALUE x, VALUE y)
+{
+  SMPEG_renderFinal(Get_SMPEG(self), Get_SDL_Surface(dst),
+                    NUM2INT(x), NUM2INT(y));
   return Qnil;
 }
 
@@ -291,6 +311,7 @@ void rubysdl_init_MPEG(VALUE mSDL)
 
   rb_define_method(cMPEG, "info", MPEG_info, 0);
   rb_define_method(cMPEG, "delete", MPEG_delete, 0);
+  rb_define_method(cMPEG, "deleted?", MPEG_deleted, 0);
   rb_define_method(cMPEG, "enableAudio", MPEG_enableAudio, 1);
   rb_define_method(cMPEG, "enableVideo", MPEG_enableVideo, 1);
   rb_define_method(cMPEG, "status", MPEG_status, 0);
@@ -299,7 +320,7 @@ void rubysdl_init_MPEG(VALUE mSDL)
   rb_define_method(cMPEG, "setLoop", MPEG_setLoop, 1);
   rb_define_method(cMPEG, "scaleXY", MPEG_scaleXY, 2);
   rb_define_method(cMPEG, "scale", MPEG_scale, 1);
-  rb_define_method(cMPEG, "move", MPEG_move, 1);
+  rb_define_method(cMPEG, "move", MPEG_move, 2);
   rb_define_method(cMPEG, "setDisplayRegion", MPEG_setDisplayRegion, 4);
   rb_define_method(cMPEG, "play", MPEG_play, 0);
   rb_define_method(cMPEG, "pause", MPEG_pause, 0);
@@ -308,6 +329,7 @@ void rubysdl_init_MPEG(VALUE mSDL)
   rb_define_method(cMPEG, "seek", MPEG_seek, 1);
   rb_define_method(cMPEG, "skip", MPEG_skip, 1);
   rb_define_method(cMPEG, "renderFrame", MPEG_renderFrame, 1);
+  rb_define_method(cMPEG, "renderFinal", MPEG_renderFinal, 3);
   rb_define_method(cMPEG, "setFilter", MPEG_setFilter, 1);
 
   rb_define_const(cMPEG, "ERROR", INT2FIX(SMPEG_ERROR));

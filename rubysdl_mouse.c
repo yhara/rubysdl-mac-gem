@@ -1,7 +1,7 @@
 /*
   Ruby/SDL   Ruby extension library for SDL
 
-  Copyright (C) 2001-2004 Ohbayashi Ippei
+  Copyright (C) 2001-2007 Ohbayashi Ippei
   
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -49,8 +49,8 @@ static VALUE Mouse_s_setCursor_imp(VALUE mod,VALUE data,VALUE mask,VALUE w,
   SafeStringValue(data);
   SafeStringValue(mask);
   
-  new_cursor = SDL_CreateCursor((Uint8 *)RSTRING(data)->ptr,
-                                (Uint8 *)RSTRING(mask)->ptr,
+  new_cursor = SDL_CreateCursor((Uint8 *)RSTRING_PTR(data),
+                                (Uint8 *)RSTRING_PTR(mask),
                                 NUM2INT(w), NUM2INT(h),
                                 NUM2INT(hot_x),NUM2INT(hot_y));
   if(new_cursor == NULL)
@@ -78,6 +78,10 @@ static VALUE Mouse_s_hide(VALUE mod)
   SDL_ShowCursor(0);
   return Qnil;
 }
+static VALUE Mouse_s_show_p(VALUE mod)
+{
+  return INT2BOOL(SDL_ShowCursor(SDL_QUERY) == SDL_ENABLE);
+}
 
 void rubysdl_init_Mouse(VALUE mSDL)
 {
@@ -87,6 +91,7 @@ void rubysdl_init_Mouse(VALUE mSDL)
   rb_define_module_function(mMouse, "warp", Mouse_s_warp, 2);
   rb_define_module_function(mMouse, "setCursor_imp", Mouse_s_setCursor_imp, 6);
   rb_define_module_function(mMouse, "show", Mouse_s_show, 0);
+  rb_define_module_function(mMouse, "show?", Mouse_s_show_p, 0);
   rb_define_module_function(mMouse, "hide", Mouse_s_hide, 0);
 
   rb_define_const(mMouse,"BUTTON_LEFT",INT2NUM(SDL_BUTTON_LEFT));

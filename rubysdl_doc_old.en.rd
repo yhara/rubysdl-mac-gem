@@ -471,13 +471,16 @@ Object
 --- SDL::Surface#[](x,y)
       Needs SGE ,Needs lock
       Gets the color of the specified pixel.
-
---- SDL::Surface#putPixel(x,y,pixel)
---- SDL::Surface#put_pixel(x,y,pixel)
---- SDL::Surface#[]=(x,y,pixel)
+      You can convert this color value to RGB with ((<SDL::Surface#getRGBA>)).
+      
+--- SDL::Surface#putPixel(x,y,color)
+--- SDL::Surface#put_pixel(x,y,color)
+--- SDL::Surface#[]=(x,y,color)
       Needs SGE ,Needs lock
-      Writes a pixel to the specified position.
-
+      Changes the color of the pixel on (x, y).
+      You can specify color by [r, g, b], [r, g, b, a] array or integer
+      given by ((<SDL::Surface#mapRGBA>)).
+      
 --- SDL::Surface#drawLine(x1,y1,x2,y2,color)
 --- SDL::Surface#draw_line(x1,y1,x2,y2,color)
       Needs SGE ,Needs lock
@@ -599,7 +602,40 @@ Object
       Needs SGE ,Needs lock
 
       Draws an antialiased ellipse with alpha blending.
+
+--- SDL::Surface#drawBezier(x1,y1,x2,y2,x3,y3,x4,y4,level,color)
+--- SDL::Surface#draw_bezier(x1,y1,x2,y2,x3,y3,x4,y4,level,color)
+      Needs SGE ,Needs lock
       
+      Draws a bezier curve from (x1,y1) to (x4,y4) with the control
+      points (x2,y2) and (x3,y3). level indicates how good precision
+      the function should use, 4-7 is normal.
+      
+--- SDL::Surface#drawAABezier(x1,y1,x2,y2,x3,y3,x4,y4,level,color)
+--- SDL::Surface#draw_aa_bezier(x1,y1,x2,y2,x3,y3,x4,y4,level,color)
+      Needs SGE ,Needs lock
+      
+      Draws a antialiased bezier curve from (x1,y1) to (x4,y4) with the control
+      points (x2,y2) and (x3,y3). level indicates how good precision
+      the function should use, 4-7 is normal.
+      
+--- SDL::Surface#drawBezierAlpha(x1,y1,x2,y2,x3,y3,x4,y4,level,color,alpha)
+--- SDL::Surface#draw_bezier_alpha(x1,y1,x2,y2,x3,y3,x4,y4,level,color,alpha)
+      Needs SGE ,Needs lock
+      
+      Draws an alpha bezier curve from (x1,y1) to (x4,y4) with the control
+      points (x2,y2) and (x3,y3). level indicates how good precision
+      the function should use, 4-7 is normal.
+      
+--- SDL::Surface#drawAABezierAlpha(x1,y1,x2,y2,x3,y3,x4,y4,level,color,alpha)
+--- SDL::Surface#draw_aa_bezier_alpha(x1,y1,x2,y2,x3,y3,x4,y4,level,color,alpha)
+      Needs SGE ,Needs lock
+      
+      Draws an antialiased alpha bezier curve from (x1,y1) to (x4,y4)
+       with the control
+      points (x2,y2) and (x3,y3). level indicates how good precision
+      the function should use, 4-7 is normal.
+
 --- SDL::Surface#rotateScaledSurface(angle,scale,bgcolor)
 --- SDL::Surface#rotate_scaled_surface(angle,scale,bgcolor)
       Needs SGE
@@ -755,6 +791,14 @@ singleton methods.
 
       If 'x', 'y', 'w' and 'h' are all 0, SDL_UpdateRect will update the entire
       screen.
+
+--- SDL::Screen#updateRects(*rects)
+--- SDL::Screen#update_rects(*rects)
+    Makes sure the given list of rectangles is updated on the given screen.
+    Each rectagle is represented as an array of 4 elements([x, y, w, h]).
+    The rectangles must all be confined within the screen boundaries
+    (no clipping is done).
+
 
 --- SDL::Screen#flip
       On hardware that supports double-buffering, this method sets up a flip
@@ -974,6 +1018,10 @@ Object
     Waits indefinitely for the next available event,returning the instance
     represents that event.
 
+    Note that while waiting next event, ruby's interpreter is blocked
+    and it cannot switch other threads because ruby's thread is
+    user-level thread.
+    
 --- SDL::Event2.push(event)
       Not documented yet.
 
@@ -1260,6 +1308,11 @@ Needs SDL_mixer to use functions if this module.
 --- SDL::Mixer.spec
       Returns the audio spec in array.
         [ rate,format,channels ]
+
+--- SDL::Mixer.driverName
+--- SDL::Mixer.driver_name
+      Returns the current audio device name.
+      Raises SDL::Error if mixer is not initialized yet.
 
 --- SDL::Mixer.allocateChannels(numchannels)
 --- SDL::Mixer.allocate_channels(numchannels)

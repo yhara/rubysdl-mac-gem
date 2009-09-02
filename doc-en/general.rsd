@@ -1,0 +1,57 @@
+= Contents
+* ((<"Ruby/SDL Outline">))
+* ((<Initialize>))
+* ((<Video>))
+* ((<OpenGL>))
+* ((<Window Management>))
+* ((<Event>))
+* ((<Joystick>))
+* ((<CD-ROM>))
+* ((<Audio>))
+* ((<Time>))
+* ((<Font>))
+* ((<Collision Detection>))
+* ((<SDLSKK>))
+* ((<MPEG playback>))
+
+= Ruby/SDL Outline
+Ruby/SDL is Ruby extension library for
+((<SDL|URL:http://www.libsdl.org/>)).
+This library enables you to create games, demo, or so on.
+
+Ruby/SDL has following functions.
+* ((<access to 2D video framebuffer|Video>))
+* Access ((<Keyboard and mouse|Event>)), ((<Joystick>)) input
+* ((<Audio Playback|Audio>)) with ((<SDL_mixer|URL:http://www.libsdl.org/projects/SDL_mixer/index.html>))
+* ((<Control CD-ROM|CD-ROM>))
+* ((<Font drawing |Font>)) with ((<SDL_ttf|URL:http://www.libsdl.org/projects/SDL_ttf/index.html>)),
+  ((<SDL_kanji|URL:http://shinh.skr.jp/sdlkanji/>)) and
+  ((<SGE|URL:http://www.etek.chalmers.se/~e8cal1/sge/index.html>))
+* ((<Using OpenGL|OpenGL>)) via ((<OpenGL Interface|URL:http://www2.giganet.net/~yoshi/>))
+* ((<Dealing with time|Time>))
+* ((<SKK like Japanese input|SDLSKK>)) with ((<SDLSKK|URL:http://www.kmc.gr.jp/~ohai/sdlskk.html>))
+* ((<MPEG playback>)) with ((<SMPGE|URL:http://www.icculus.org/smpeg/>))
+* ((<Window Management>)) and ((<Collision Detection>))
+
+= m17n on Ruby 1.9
+On ruby 1.9, strings have encoding information
+but many methods of Ruby/SDL ignore this information
+since SDL doesn't define the treatment of multibyte 
+encodings. 
+Only some methods use encoding information such as
+@[WM.set_caption] and @[Kanji#put].
+
+Please see items in this reference for more details.
+
+You can enable/disable Ruby/SDL m17n support 
+to use --enable-m17n/--disable-m17n when you
+run extconf.rb.
+
+== SDL::Error
+A Exception class for SDL specific errors.
+This class is subclass of StandardError.
+
+== SDL::VERSION
+Ruby/SDL version string.
+
+

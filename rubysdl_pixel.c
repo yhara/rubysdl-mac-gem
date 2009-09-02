@@ -1,7 +1,7 @@
 /*
   Ruby/SDL   Ruby extension library for SDL
 
-  Copyright (C) 2001-2004 Ohbayashi Ippei
+  Copyright (C) 2001-2007 Ohbayashi Ippei
   
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -48,9 +48,16 @@
 	#define clip_ymin(pnt) pnt->clip_miny
 	#define clip_ymax(pnt) pnt->clip_maxy
 #endif
-     
+
+#ifdef HAVE_SGE
+#include <sge.h>
+#endif
+
 void rubysdl_putPixel(SDL_Surface *surface, Sint16 x, Sint16 y, Uint32 color)
 {
+#ifdef HAVE_SGE
+  sge_PutPixel(surface,x, y, color);
+#else
   Uint8 *pix;  
   int shift;
   
@@ -78,10 +85,14 @@ void rubysdl_putPixel(SDL_Surface *surface, Sint16 x, Sint16 y, Uint32 color)
       break;
     }
   }
+#endif
 }
 
 Uint32 rubysdl_getPixel(SDL_Surface *surface, Sint16 x, Sint16 y)
 {
+#ifdef HAVE_SGE
+  return sge_GetPixel(surface, x, y);
+#else
   Uint8 *pix;
   int shift;
   Uint32 color=0;
@@ -94,15 +105,15 @@ Uint32 rubysdl_getPixel(SDL_Surface *surface, Sint16 x, Sint16 y)
     return *((Uint16 *)surface->pixels + y*surface->pitch/2 + x);
     break;
   case 3:  /* Slow 24-bpp mode, usually not used */
-
-    /* Does this work? */
     pix = (Uint8 *)surface->pixels + y * surface->pitch + x*3;
     shift = surface->format->Rshift;
-    color = *(pix+shift/8)>>shift;
+    color = *(pix+shift/8)<<shift;
     shift = surface->format->Gshift;
-    color|= *(pix+shift/8)>>shift;
+    color|= *(pix+shift/8)<<shift;
     shift = surface->format->Bshift;
-    color|= *(pix+shift/8)>>shift;
+    color|= *(pix+shift/8)<<shift;
+    shift = surface->format->Ashift;
+    color|= *(pix+shift/8)<<shift;
     return color;
     break;
   case 4:  /* Probably 32-bpp */
@@ -110,5 +121,6 @@ Uint32 rubysdl_getPixel(SDL_Surface *surface, Sint16 x, Sint16 y)
     break;
   }
   return 0;
+#endif
 }
 

@@ -1,0 +1,155 @@
+= OpenGL
+* ((<OpenGL outline>))
+
+* OpenGL related methods
+TOC
+
+== OpenGL outline
+Ruby/SDL has the ability to create and use OpenGL
+contexts on several platforms(Linux/
+X11, Win32, Mac OS X, etc).
+This allows you to use SDL's audio, event handling and times in your
+OpenGL applications (a function often performed by GLUT).
+
+Ruby/SDL has no OpenGL methods, please use
+((<OpenGL Interface|URL:http://www2.giganet.net/~yoshi/>)) or
+((<riko|URL:http://www.kumaryu.net/?(Ruby)+Riko>))
+with Ruby/SDL.
+
+=== Initialisation
+Initialising Ruby/SDL to use OpenGL is not very
+different to initialising Ruby/SDL normally.
+There are three differences; you must pass
+SDL::OPENGL to @[Screen.open], you
+must specify several GL attributes (depth buffer size, framebuffer sizes) using 
+@[GL.set_attr] and finally, if you wish to use double buffering you must
+specify it as a GL attribute, ((*not*)) by passing the SDL::DOUBLEBUF flag to
+SDL::DOUBLEBUF.
+
+
+EXAMPLE
+  # First, initialize SDL's video subsystem.
+  SDL.init(SDL::INIT_VIDEO)
+  # Let's get some video information.
+  info = SDL::Screen.info
+  # Set our width/height to 640/480 (you would
+  # of course let the user decide this in a normal
+  # app).
+  width = 640
+  height = 480
+  # We get the bpp we will request from the display.
+  bpp = info.bpp
+  # Now, we want to setup our requested
+  # window attributes for our OpenGL window.
+  # We want *at least* 5 bits of red, green
+  # and blue. We also want at least a 16-bit
+  # depth buffer.
+  #
+  # The last thing we do is request a double
+  # buffered window. '1' turns on double
+  # buffering, '0' turns it off.
+  #
+  # Note that we do not use SDL::DOUBLEBUF in
+  # the flags to SDL::Screen.open. That does
+  # not affect the GL attribute state, only
+  # the standard 2D blitting setup.
+  SDL::GL.set_attr(SDL::GL::RED_SIZE, 5)
+  SDL::GL.set_attr(SDL::GL::GREEN_SIZE, 5)
+  SDL::GL.set_attr(SDL::GL::BLUE_SIZE, 5)
+  SDL::GL.set_attr(SDL::GL::DEPTH_SIZE, 16)
+  SDL::GL.set_attr(SDL::GL::DOUBLEBUFFER, 1)
+
+  # We want to request that SDL provide us
+  # with an OpenGL window, in a fullscreen
+  # video mode.
+  flags = SDL:;OPENGL | SDL::FULLSCREEN
+
+  # Set the video mode
+  SDL::Screen.open(width, height, bpp, flags)
+
+=== GL attribute
+You can use @[GL.get_attr] and @[GL.set_attr] with following attributes:
+* SDL::GL::RED_SIZE         Size of the framebuffer red component, in bits
+* SDL::GL::GREEN_SIZE       Size of the framebuffer green component, in bits
+* SDL::GL::BLUE_SIZE        Size of the framebuffer blue component, in bits
+* SDL::GL::ALPHA_SIZE       Size of the framebuffer alpha component, in bits
+* SDL::GL::DOUBLEBUFFER     0 or 1, enable or disable double buffering
+* SDL::GL::BUFFER_SIZE      Size of the framebuffer, in bits
+* SDL::GL::DEPTH_SIZE       Size of the depth buffer, in bits
+* SDL::GL::STENCIL_SIZE     Size of the stencil buffer, in bits
+* SDL::GL::ACCUM_RED_SIZE   Size of the accumulation buffer red component, in bits
+* SDL::GL::ACCUM_GREEN_SIZE Size of the accumulation buffer green component, in bits
+* SDL::GL::ACCUM_BLUE_SIZE  Size of the accumulation buffer blue component, in bits
+* SDL::GL::ACCUM_ALPHA_SIZE Size of the accumulation buffer alpha component, in bits
+
+=== Drawing
+Apart from initialisation, using OpenGL within Ruby/SDL
+is the same as using OpenGL
+with any other API, e.g. GLUT. You still use all the same function calls and data
+types. However if you are using a double-buffered display, then you must use 
+@[GL.swap_buffers] to swap the buffers and update the display. To request
+double-buffering with OpenGL, use @[GL.set_attr] with SDL::GL::DOUBLEBUFFER,
+and use @[GL.get_attr] to see if you actually got it.
+
+== Methods
+%%%
+NAME get_attr
+MOD GL
+TYPE .
+PURPOSE Get the value of a special SDL/OpenGL attribute
+RVAL Integer
+
+PROTO
+get_attr(attr)
+getAttr(attr)
+
+DESC
+Returns the value of the SDL/OpenGL ((<attribute|GL attribute>)) $[attr].
+This is useful after
+a call to @[Screen.open] to check whether your attributes have been set as you
+expected.
+
+EXCEPTION *
+SEEALSO
+GL.set_attr
+
+%%
+NAME set_attr
+MOD GL
+TYPE .
+PURPOSE Set a special SDL/OpenGL attribute
+
+PROTO
+set_attr(attr, val)
+setAttr(attr, val)
+
+DESC
+Sets the OpenGL ((<attribute|GL attribute>)) $[attr] to $[value].
+The attributes you set don't take effect
+until after a call to @[Screen.open]. You should use @[GL.get_attr] to
+check the values after a @[Screen.open] call.
+
+EXCEPTION *
+NOTES
+The SDL::DOUBLEBUF flag is not required to enable double buffering when
+setting an OpenGL video mode. Double buffering is enabled or disabled using
+the SDL::GL::DOUBLEBUFFER attribute.
+
+SEEALSO
+GL.get_attr
+
+%%
+NAME swap_buffers
+MOD GL
+TYPE .
+PURPOSE Swap OpenGL framebuffers/Update Display
+PROTO
+swap_buffers()
+swapBuffers()
+
+DESC
+Swap the OpenGL buffers, if double-buffering is supported.
+
+SEEALSO
+GL.set_attr
+Screen.open

@@ -1,6 +1,6 @@
 #
 # Ruby/SDL   Ruby extension library for SDL
-#  Copyright (C) 2001,2002 Ohbayashi Ippei
+#  Copyright (C) 2001-2007 Ohbayashi Ippei
 # 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -14,38 +14,35 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 # 
-require 'sdl.so'
+require 'sdl_ext'
 require 'forwardable'
 
 module SDL
-  VERSION = "2"
-  
-  class Surface
-    extend Forwardable
+  VERSION = "2.1.1"
 
-    def_delegators :format, :alpha, :colorkey
-    
+  class Surface
     def put(surface,x,y)
       SDL::Surface.blit(surface,0,0,surface.w,surface.h,self,x,y)
     end
 
     def copyRect(x,y,w,h)
+      format = self.format
       flagbase=SDL::SWSURFACE|SDL::HWSURFACE|SDL::SRCCOLORKEY|SDL::SRCALPHA
       alpha_flag = self.flags & (SDL::SRCCOLORKEY|SDL::RLEACCEL)
-      self.setAlpha(0,self.alpha)
+      self.setAlpha(0,format.alpha)
       begin
         new_surface=Surface.new(flagbase&self.flags,w,h,self)
       ensure
-        self.setAlpha(alpha_flag,self.alpha)
+        self.setAlpha(alpha_flag,format.alpha)
       end
       SDL.blitSurface(self,x,y,w,h,new_surface,0,0)
       new_surface.setColorKey(self.flags & (SDL::SRCCOLORKEY|SDL::RLEACCEL),
-                              self.colorkey )
+                              format.colorkey )
       new_surface.setAlpha(self.flags & (SDL::SRCALPHA|SDL::RLEACCEL),
-                           self.alpha )
+                           format.alpha )
       return new_surface
     end
-
+    
     def self.new(*args)
       case args.size
       when 4
@@ -57,25 +54,7 @@ module SDL
       end
     end
 
-    if method_defined?(:transform)
-      def self.transformBlit(src, dst, angle, xscale, yscale,
-                             px, py, qx, qy, flags)
-        transformed = src.transform(src.colorkey, angle,
-                                    xscale, yscale, flags)
-        transformed.setColorKey(src.flags & (SDL::SRCCOLORKEY|SDL::RLEACCEL),
-                                src.colorkey )
-        transformed.setAlpha(src.flags & (SDL::SRCALPHA|SDL::RLEACCEL),
-                             src.alpha )
-        rad = Math::PI*angle / 180.0
-        x = px - src.w/2.0 ; y = py - src.h/2.0
-        x *= xscale ; y *= yscale
-        dst_x = x*Math.cos(rad)-y*Math.sin(rad) 
-        dst_y = x*Math.sin(rad)+y*Math.cos(rad) 
-        dst_x += transformed.w / 2
-        dst_y += transformed.h / 2
-        blit(transformed, 0, 0, 0, 0, dst, qx-dst_x, qy-dst_y)
-      end
-    end
+    
   end
 
   def color2int(color,format)
@@ -135,6 +114,32 @@ module SDL
     end
     
   end # of module Mouse
+
+  if defined?(CollisionMap)
+    def Surface.transformBlit(src, dst, angle, xscale, yscale,
+                              px, py, qx, qy, flags)
+      transformed = src.transformSurface(src.colorkey, angle,
+                                         xscale, yscale, flags)
+      transformed.setColorKey(src.flags & (SDL::SRCCOLORKEY|SDL::RLEACCEL),
+                              src.colorkey )
+      transformed.setAlpha(src.flags & (SDL::SRCALPHA|SDL::RLEACCEL),
+                           src.alpha )
+      rad = Math::PI*angle / 180.0
+      x = px - src.w/2.0 ; y = py - src.h/2.0
+        x *= xscale ; y *= yscale
+      dst_x = x*Math.cos(rad)-y*Math.sin(rad) 
+      dst_y = x*Math.sin(rad)+y*Math.cos(rad) 
+      dst_x += transformed.w / 2
+      dst_y += transformed.h / 2
+      Surface.blit(transformed, 0, 0, 0, 0, dst, qx-dst_x, qy-dst_y)
+    end
+  end
+  
+  class CD
+    def in_drive?
+      status > 0
+    end
+  end
   
   module_function
 
@@ -170,43 +175,27 @@ module SDL
   end
 
   if defined?(MPEG)
-    class MPEG
-      alias info_imp info
-      private :info_imp
-      def info(*arg)
-	case arg.size
-	when 0
-	  result = SDL::MPEG::Info.new
-	  info_imp(result)
-	  result
-	when 1
-	  info_imp(arg[0])
-	  arg[0]
-	end
-      end
-    end
   end
+  if defined?(TTF)
+    class TTF
+      define_draw = proc{|t, n|
+        args = (1..n).map{|k| "arg#{k}"}.join(",")
+        module_eval(<<-EOS)
+          def draw#{t}(dst, text, x, y, #{args})
+            image = render#{t}(text, #{args})
+            dst.put(image, x, y)
+            image.destroy
+          end
+        EOS
+      }
 
-  if defined?(TT)
-    module TT
-      class Font
-        def drawSolidUTF8(dst, text, x, y, r, g, b)
-          image = renderSolidUTF8(text, r, g, b)
-          dst.put(image, x, y)
-          image.destroy
-        end
-
-        def drawBlendedUTF8(dst, text, x, y, r, g, b)
-          image = renderBlendedUTF8(text, r, g, b)
-          dst.put(image, x, y)
-          image.destroy
-        end
-
-        def drawShadedUTF8(dst, text, fg_r, fg_g, fg_b, bg_r, bg_g, bg_b)
-          image = renderSolidUTF8(text, fg_r, fg_g, fg_b, bg_r, bg_g, bg_b)
-          dst.put(image, x, y)
-          image.destroy
-        end
+      define_draw["SolidUTF8", 3]
+      define_draw["BlendedUTF8", 3]
+      define_draw["ShadedUTF8",6]
+      if method_defined?(:drawSolid)
+        define_draw["Solid",3]
+        define_draw["Blended", 3]
+        define_draw["Shaded", 6]
       end
     end
   end
@@ -232,3 +221,4 @@ if defined?(GL) then
 end
 
 require 'rubysdl_aliases.rb'
+require 'rubysdl_compatible_ver1.rb'

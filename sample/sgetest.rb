@@ -2,20 +2,22 @@ require 'sdl'
 
 SDL.init( SDL::INIT_VIDEO )
 screen = SDL::Screen.open(640,480,16,SDL::SWSURFACE)
-SDL::WM::setCaption $0, $0
+SDL::WM.set_caption $0, $0
 
+format = screen.format
 # draw red pixel at (200,200)
-screen[200,200] = screen.format.mapRGB(255,0,0)
-# draw green pixel at (260,200)
-screen[260,200] = screen.format.mapRGB(0,255,0)
-# draw blue pixel at (320,200)
-screen[320,200] = screen.format.mapRGB(0,0,255)
+screen[200,200]= format.map_rgb(255,0,0)
+# draw green pixel at (250,200)
+screen[250,200]= format.map_rgb(0,255,0)
+# draw blue pixel at (200,200)
+screen[300,200]= format.map_rgb(0,0,255)
 
-Red=screen.format.mapRGB(255,0,0)
-screen.drawLine(20,20,300,200,Red)
-screen.drawRect(49,59,80,80,Red)
-screen.drawCircle(100,100,50,[87,87,87])
-screen.drawCircle(300,300,30,Red,true)
+Red=format.map_rgb(255,0,0)
+screen.draw_line(20,20,300,200,Red)
+screen.draw_rect(49,59,80,80,Red)
+screen.draw_circle(100,100,50,[87,87,87])
+screen.draw_circle(300,300,30,Red, true)
+screen.draw_circle(230, 300, 30, Red, true, true)
 
 screen.flip
 

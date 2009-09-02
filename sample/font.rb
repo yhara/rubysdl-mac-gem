@@ -1,27 +1,26 @@
-# This sample needs a true type font file `sample.ttf'.
 require 'sdl'
 
 SDL.init( SDL::INIT_VIDEO )
 
 screen = SDL::Screen.open(640,480,16,SDL::SWSURFACE)
-SDL::WM::setCaption($0,$0)
+SDL::WM::set_caption($0,$0)
 
-SDL::TT.init
+SDL::TTF.init
 
-font = SDL::TT::Font.open('sample.ttf',24)
-font.style = SDL::TT::STYLE_NORMAL
+font = SDL::TTF.open('sample.ttf',24)
+font.style = SDL::TTF::STYLE_NORMAL
 
-font.drawSolidUTF8(screen,'test SDL_ttf',300,150,255,255,255)
+font.draw_solid_utf8(screen,'test SDL_ttf',300,150,255,255,255)
 
 screen.flip
 
-while true
-  while event = SDL::Event.poll
+loop do
+  while event = SDL::Event2.poll
     case event
-    when SDL::Event::KeyDown, SDL::Event::Quit
+    when SDL::Event2::KeyDown, SDL::Event2::Quit
+      font.close
       exit
     end
   end
-
-  sleep 0.1
+  
 end

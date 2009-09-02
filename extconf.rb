@@ -1,14 +1,17 @@
 require 'mkmf'
 
-sdl_config = with_config('sdl-config', 'sdl-config')
-
-$CFLAGS += ' ' + `#{sdl_config} --cflags`.chomp
-$LOCAL_LIBS += ' ' + `#{sdl_config} --libs`.chomp
-
-if /-Dmain=SDL_main/ =~ $CFLAGS then
-  def try_func(func, libs, headers = nil, &b)
-    headers = cpp_include(headers)
-    try_link(<<"SRC", libs, &b) or try_link(<<"SRC", libs, &b)
+if /mswin32/ =~ CONFIG["arch"]
+  have_library("SDL")
+else
+  sdl_config = with_config('sdl-config', 'sdl-config')
+  
+  $CFLAGS += ' ' + `#{sdl_config} --cflags`.chomp
+  $LOCAL_LIBS += ' ' + `#{sdl_config} --libs`.chomp
+  
+  if /-Dmain=SDL_main/ =~ $CFLAGS then
+    def try_func(func, libs, headers = nil, &b)
+      headers = cpp_include(headers)
+      try_link(<<"SRC", libs, &b) or try_link(<<"SRC", libs, &b)
 #{headers}
 /*top*/
 int main(int argc,char** argv) { return 0; }
@@ -20,9 +23,9 @@ SRC
 int main(int argc,char** argv) { return 0; }
 int t() { void ((*volatile p)()); p = (void ((*)()))#{func}; return 0; }
 SRC
+    end
   end
 end
-
 
 if enable_config("static-libs",false) then
   have_library("stdc++")
@@ -56,6 +59,22 @@ if have_library("SDL_ttf","TTF_Init") then
   $CFLAGS+= " -D HAVE_SDL_TTF "
 end
 
+have_func("TTF_OpenFontIndex")
+have_func("TTF_FontFaces")
+have_func("TTF_FontFaceIsFixedWidth")
+have_func("TTF_FontFaceFamilyName")
+have_func("TTF_FontFaceStyleName")
+have_func("Mix_LoadMUS_RW")
+have_func("rb_thread_blocking_region")
+if enable_config("m17n", true)
+  if have_func("rb_enc_str_new") && have_func("rb_str_export_to_enc")
+    $CFLAGS += " -D ENABLE_M17N "
+    if enable_config("m17n-filesystem", false)
+      $CFLAGS += " -D ENABLE_M17N_FILESYSTEM "
+    end
+  end
+end
+
 if have_library("SDLSKK","SDLSKK_Context_new") then
   $CFLAGS+= " -D HAVE_SDLSKK "
 end
@@ -71,5 +90,5 @@ if enable_config("opengl",true) then
     have_library("glu32","gluGetString")
   end
 end
-create_makefile("sdl")
+create_makefile("sdl_ext")
 

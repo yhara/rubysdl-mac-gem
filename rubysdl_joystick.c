@@ -1,7 +1,7 @@
 /*
   Ruby/SDL   Ruby extension library for SDL
 
-  Copyright (C) 2001-2004 Ohbayashi Ippei
+  Copyright (C) 2001-2007 Ohbayashi Ippei
   
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -144,7 +144,6 @@ static VALUE Joystick_close(VALUE self)
   joy->joystick = NULL;
   return Qnil;
 }
-  
 static VALUE Joystick_index(VALUE self)
 {
   SDL_Joystick* joystick;

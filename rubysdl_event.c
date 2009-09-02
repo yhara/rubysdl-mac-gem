@@ -1,7 +1,7 @@
 /*
   Ruby/SDL   Ruby extension library for SDL
 
-  Copyright (C) 2001-2004 Ohbayashi Ippei
+  Copyright (C) 2001-2007 Ohbayashi Ippei
   
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -182,15 +182,36 @@ static VALUE Event_s_poll(VALUE class)
   else
     return Qnil;
 }
+#ifdef HAVE_RB_THREAD_BLOCKING_REGION
+static VALUE wait_event(void* ev)
+{
+  return SDL_WaitEvent((SDL_Event*)ev);
+}
+#endif
 static VALUE Event_s_wait(VALUE class)
 {
   SDL_Event event;
   rb_secure(4);
+#ifdef HAVE_RB_THREAD_BLOCKING_REGION
+  /* Ruby 1.9 and above: Release the global VM lock while calling
+   * SDL_WaitEvent, allowing other Ruby threads to execute. */
+  if( rb_thread_blocking_region(wait_event, &event, RUBY_UBF_IO, NULL) == 1)
+#else
+  /* Ruby 1.8 and below: Call SDL_WaitEvent directly.
+   * No other threads can execute during this call. */
   if( SDL_WaitEvent(&event) == 1)
+#endif
     return event_creators[event.type](&event);
   else
     rb_raise(eSDLError, "Event handling error");
 }
+
+static VALUE Event_s_pump(VALUE class)
+{
+  SDL_PumpEvents();
+  return Qnil;
+}
+
 static VALUE Event_s_new(VALUE class)
 {
   return rb_obj_alloc(class);
@@ -199,8 +220,9 @@ static VALUE Event_s_new(VALUE class)
 static VALUE Event_s_push(VALUE class, VALUE event)
 {
   SDL_Event e;
+  VALUE eventClass;
   rb_secure(4);
-  VALUE eventClass = CLASS_OF(event);
+  eventClass = CLASS_OF(event);
   if(eventClass == cActiveEvent){
     e.type = SDL_ACTIVEEVENT;
     e.active.gain = rb_iv_get(event, "@gain");
@@ -306,6 +328,7 @@ void rubysdl_init_Event(VALUE mSDL)
   cEvent=rb_define_class_under(mSDL, "Event", rb_cObject);
   rb_define_singleton_method(cEvent, "poll", Event_s_poll, 0);
   rb_define_singleton_method(cEvent, "wait", Event_s_wait, 0);
+  rb_define_singleton_method(cEvent, "pump", Event_s_pump, 0);
   rb_define_singleton_method(cEvent, "new", Event_s_new, 0);
   rb_define_singleton_method(cEvent, "push", Event_s_push, 1);
   rb_define_singleton_method(cEvent, "appState", Event_s_getAppState, 0);
@@ -396,4 +419,5 @@ void rubysdl_init_Event(VALUE mSDL)
   event_creators[SDL_JOYBUTTONUP] = createJoyButtonUpEvent;
   event_creators[SDL_QUIT] = createQuitEvent;
   event_creators[SDL_SYSWMEVENT] = createSysWMEvent;
-  event_creators[SDL_VIDEORESIZE] = createVideoResizeEvent;}
+  event_creators[SDL_VIDEORESIZE] = createVideoResizeEvent;
+}

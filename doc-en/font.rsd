@@ -1,0 +1,948 @@
+= Font
+* ((< Font drawing outline>))
+* ((<SDL::TTF>))
+* ((<SDL::BMFont>))
+* ((<SDL::Kanji>))
+* Font methods
+TOC
+
+== Font drawing outline
+Ruby/SDL has three different font drawing system.
+First is True Type Font drawing by
+((<SDL_ttf|URL:http://www.libsdl.org/projects/SDL_ttf/index.html>)),
+second is original bitmap font/SFont drawing by
+((<SGE|URL:http://www.etek.chalmers.se/~e8cal1/sge/index.html>)),
+and the last is bdf font drawing by
+((<SDL_kanji|URL:http://shinh.skr.jp/sdlkanji/>)).
+
+Each system has following features. 
+* SDL::TTF
+
+  Extension name of Font file name is ttf and ttc.
+  True type font has vector data, therefore you can use arbitrary font size.
+  
+* SDL::BMFont
+
+  Font files are mere Windows BMP files or PNG image files.
+  In original font file format, image data is regarded as 256 character
+  images ordered by ASCII.
+  Creating your own fonts is more easy than true type fonts.
+
+  You can use ((<SFont|URL:http://www.linux-games.com/sfont/>))
+  with this class. This format is also bitmap font, but character width
+  is variable.
+
+  You can't use kanji and other Unicode characters.
+
+* SDL::Kanji
+
+  Font files are BDF format. BDF is a kind of bitmap font.
+  You can mix multiple font files (for example, alphabet and kanji).
+
+== SDL::TTF
+METHODS(TTF)
+
+This class represents true type font. 
+((<SDL_ttf|URL:http://www.libsdl.org/projects/SDL_ttf/index.html>))
+is needed to use this class. Backend of SDL_ttf is 
+((<Freetype|URL:http://www.freetype.org/>)).
+
+Note that you should pay attention to font license.
+
+== SDL::BMFont
+METHODS(BMFont)
+
+This class represets bitmap font. 
+((<SGE|URL:http://www.etek.chalmers.se/~e8cal1/sge/index.html>))
+is needed.
+
+== SDL::Kanji
+METHODS(Kanji)
+
+This class represets bdf font. 
+
+== Font methods
+%%%
+NAME init
+MOD TTF
+TYPE .
+DEP SDL_ttf
+PURPOSE Initialize TTF APIs
+
+PROTO
+init
+
+DESC
+Initialize the truetype font API. This must be called before using other methods
+of this class, excepting @[TTF.init?].
+@[init] does not have to be called before this call.
+
+SEEALSO
+TTF.init?
+
+%%
+NAME init?
+MOD TTF
+TYPE .
+DEP SDL_ttf
+PURPOSE Query TTF API initialization status
+RVAL true/false
+
+PROTO
+init?
+
+DESC
+Returns true if TTF API is already initialize, otherwise returns false.
+
+SEEALSO
+TTF.init
+
+%%
+NAME open
+MOD TTF
+TYPE .
+DEP SDL_ttf
+PURPOSE Load font From a file
+RVAL SDL::TTF
+
+PROTO
+open(filename, ptsize, index=0)
+
+DESC
+Load $[filename], face $[index], for use as a font, at $[ptsize] size.
+
+RET
+Returns new @[TTF] object.
+
+EXCEPTION *
+
+EXAMPLE
+SDL::TTF.init
+font = SDL::TTF.open("font.ttf", 32, 0)
+
+%%
+NAME close
+MOD TTF
+TYPE #
+DEP SDL_ttf
+PURPOSE Closes a font
+
+PROTO
+close
+
+DESC
+Closes a font and free related resources.
+
+SEEALSO
+TTF#closed?
+
+%%
+NAME closed?
+MOD TTF
+TYPE #
+DEP SDL_ttf
+PURPOSE Returns whether a font is closed or not
+RVAL true/false
+
+PROTO
+closed?
+
+DESC
+Returns whether a font is closed by @[TTF#close]
+
+SEEALSO
+TTF#close
+
+
+%%
+NAME style
+MOD TTF
+TYPE #
+DEP SDL_ttf
+PURPOSE Get font render style
+RVAL UINT
+
+PROTO
+style
+
+DESC
+Returns the rendering style as a bitmask composed of the follwing masks:
+* SDL::TTF::STYLE_BOLD
+* SDL::TTF::STYLE_ITALIC
+* SDL::TTF::STYLE_UNDERLINE
+If no style is set then SDL::TTF::STYLE_NORMAL is returned.
+
+EXAMPLE
+print "The font style is:"
+
+print " normal" if font.style == SDL::TTF::STYLE_NORMAL
+print " bold" if (font.style & SDL::TTF::STYLE_BOLD) != 0
+print " italic" if (font.style & SDL::TTF::STYLE_ITALIC) != 0
+print " italic" if (font.style & SDL::TTF::STYLE_UNDERLINE) != 0
+
+print "\n"
+
+SEEALSO
+TTF#style=
+
+%%
+NAME style=
+MOD TTF
+TYPE #
+DEP SDL_ttf
+PURPOSE Set the rendering style.
+
+PROTO
+style=(new_style)
+
+DESC
+Set the rendering style as $[new_style].
+$[new_style] should be a bitmask composed of the follwing masks:
+* SDL::TTF::STYLE_BOLD
+* SDL::TTF::STYLE_ITALIC
+* SDL::TTF::STYLE_UNDERLINE
+or SDL::TTF::STYLE_NORMAL to reset style.
+
+NOTES
+This will flush the internal cache of previously rendered glyphs, even if
+there is no change in style, so it may be best to check the current style using 
+@[TTF.style] first.
+
+EXAMPLE
+# set the loaded font's style to fake bold italics
+font.style = SDL::TTF::STYLE_ITALIC | SDL::TTF::STYLE_BOLD
+
+# render some text in fake bold italics...
+
+# set the loaded font's style back to normal
+font.style = SDL::TTF::STYLE_NORMAL
+
+SEEALSO
+TTF#style
+
+%%
+NAME height
+MOD TTF
+TYPE #
+DEP SDL_ttf
+PURPOSE Get font max height
+RVAL Integer
+
+PROTO
+height
+
+DESC
+Returns the maximum pixel height of all glyphs of the font. You may use this
+height for rendering text as close together vertically as possible, though adding
+at least one pixel height to it will space it so they can't touch. Remember that
+Ruby/SDL and SDL_ttf doesn't handle multiline
+printing, so you are responsible for line
+spacing, see the @[TTF#line_skip] as well.
+
+%%
+NAME ascent
+MOD TTF
+TYPE #
+DEP SDL_ttf
+PURPOSE Get font max ascent (y above origin)
+RVAL Integer
+
+PROTO
+ascent
+
+DESC
+Get the maximum pixel ascent (height above baseline)
+of all glyphs of the loaded font. This can also be
+interpreted as the distance from the top of the font to the baseline. It could be
+used when drawing an individual glyph relative to a top point, by combining it
+with the glyph's maxy metric to resolve the top of the rectangle used when
+blitting the glyph on the screen.
+
+SEEALSO
+TTF#height
+TTF#descent
+TTF#line_skip
+
+%%
+NAME descent
+MOD TTF
+TYPE #
+DEP SDL_ttf
+PURPOSE Get font min descent (y below origin)
+RVAL Integer
+
+PROTO
+descent
+
+DESC
+Get the maximum pixel descent (height below baseline)
+of all glyphs of the loaded font. This can also be
+interpreted as the distance from the baseline to the bottom of the font. It could
+be used when drawing an individual glyph relative to a bottom point, by combining
+it with the glyph's maxy metric to resolve the top of the rectangle used when
+blitting the glyph on the screen.
+
+SEEALSO
+TTF#height
+TTF#ascent
+TTF#line_skip
+
+%%
+NAME line_skip
+MOD TTF
+TYPE #
+DEP SDL_ttf
+PURPOSE Get font recommended line spacing
+RVAL Integer
+
+PROTO
+line_skip
+
+DESC
+Get the reccomended pixel height of a rendered line of text of the loaded font.
+This is usually larger than the @[TTF#height] of the font.
+
+SEEALSO
+TTF#height
+TTF#ascent
+TTF#descent
+
+%%
+NAME faces
+MOD TTF
+TYPE #
+DEP SDL_ttf
+PURPOSE Get the number of faces in a font
+RVAL Integer
+
+PROTO
+faces
+
+DESC
+Returns the number of faces(subfonts) in a font.
+
+%%
+NAME fixed_width?
+MOD TTF
+TYPE #
+DEP SDL_ttf
+PURPOSE Get whether font is monospaced or not.
+RVAL true/false
+
+PROTO
+fixed_width?
+
+DESC
+Returns true if $[self] font is monospaced, otherwise returns false.
+If font is monospaced, width of the rendered surface is
+(width)*(length of string).
+
+SEEALSO
+TTF#faces
+TTF#family_name
+
+%%
+NAME family_name
+MOD TTF
+TYPE #
+DEP SDL_ttf
+PURPOSE Get current font face family name string
+RVAL String/nil
+
+PROTO
+family_name
+familyName
+
+DESC
+Returns current font face family name string.
+Returns nil if that font has no name information.
+
+SEEALSO
+TTF#faces
+TTF#fixed_width?
+TTF#style_name
+
+%%
+NAME style_name
+MOD TTF
+TYPE #
+DEP SDL_ttf
+PURPOSE Get current font face style name string
+RVAL String/nil
+
+PROTO
+style_name
+styleName
+
+DESC
+Returns current font face style name string.
+Returns nil if the font has no name information.
+
+SEEALSO
+TTF#faces
+TTF#fixed_width?
+TTF#family_name
+
+%%
+NAME text_size
+MOD TTF
+TYPE #
+DEP SDL_ttf
+PURPOSE Get size of text string as would be rendered
+RVAL [Integer, Integer]
+
+PROTO
+text_size(text)
+textSize(text)
+
+DESC
+Calculate the resulting surface size of the UTF8 encoded text rendered using font.
+No actual rendering is done, however correct kerning is done to get the actual
+width. The height returned in h is the same as you can get using @[TTF#height].
+
+NOTES
+If Ruby/SDL m17n support is enabled, 
+$[text] will be converted to suitable encoding.
+
+RET
+Returns a 2 element array as [w, h].
+
+EXCEPTION *
+
+EXAMPLE
+w, h = font.size_text("Hello World!")
+puts "width=#{w} height=#{h}"
+
+SEEALSO
+TTF#render_solid_utf8
+TTF#render_shaded_utf8
+TTF#render_blended_utf8
+TTF#draw_solid_utf8
+TTF#draw_shaded_utf8
+TTF#draw_blended_utf8
+
+%%
+NAME render_solid_utf8
+MOD TTF
+TYPE #
+DEP SDL_ttf
+PURPOSE Render UTF8 text in solid mode
+RVAL SDL::Surface/nil
+
+PROTO
+render_solid_utf8(text, r, g, b)
+renderSolidUTF8(text, r, g, b)
+
+DESC
+This method will render the given $[text] with the given font with
+($[r], [g], $[b])
+color onto a new surface. The Solid mode is used and this is the fastest.
+This method returns new @[surface|Surface] object.
+
+This method create an 8-bit palettized
+surface and render the given text at fast quality
+with the given font and color. The 0 pixel value is the colorkey, giving a
+transparent background, and the 1 pixel value is set to the text color. The
+colormap is set to have the desired foreground color at index 1, this allows
+you to change the color without having to render the text again. Colormap
+index 0 is of course not drawn, since it is the colorkey, and thus
+transparent, though it's actual color is 255 minus each RGB component of the
+foreground. This is the fastest rendering speed of all the rendering modes.
+This results in no box around the text, but the text is not as smooth. The
+resulting surface should blit faster than
+the $[Blended|TTF#render_blended_utf8] one. Use this mode for
+FPS and other fast changing updating text displays.
+
+SEEALSO
+TTF#render_shaded_utf8
+TTF#render_blended_utf8
+TTF#draw_solid_utf8
+
+%%
+NAME render_shaded_utf8
+MOD TTF
+TYPE #
+DEP SDL_ttf
+PURPOSE Render UTF8 text in shaded mode
+RVAL SDL::Surface/nil
+
+PROTO
+render_shaded_utf8(text,fg_r,fg_g,fg_b,bg_r,bg_g,bg_b)
+renderShadedUTF8(text,fg_r,fg_g,fg_b,bg_r,bg_g,bg_b)
+
+DESC
+This method will render the given $[text] with the given font with
+($[fg_r], [fg_g], $[fg_b]) color onto a new surface
+with background color ($[bg_r], [bg_g], $[bg_b]).
+Returns new @[surface|Surface] object.
+
+This method create an 8-bit palettized
+surface and render the given text at high quality
+with the given font and colors. The 0 pixel value is background, while other
+pixels have varying degrees of the foreground color from the background color.
+This results in a box of the background color around the text in the
+foreground color. The text is antialiased.
+This will render slower than @[Solid|TTF#render_solid_utf8],
+but in about the same time as @[TTF#render_blended_utf8].
+The resulting surface should blit
+as fast as @[Solid|TTF#render_solid_utf8], once it is made.
+Use this when you need nice text, and can
+live with a box...
+
+SEEALSO
+TTF#render_solid_utf8
+TTF#render_blended_utf8
+TTF#draw_shaded_utf8
+
+%%
+NAME render_blended_utf8
+MOD TTF
+TYPE #
+DEP SDL_ttf
+PURPOSE Render UTF8 text in blended mode
+RVAL SDL::Surface/nil
+
+PROTO
+render_blended_utf8(text, r, g, b)
+render_blended_utf8(text, r, g, b)
+
+DESC
+This method will render the given $[text] with the given font with ($[r], [g], $[b])
+color onto a new surface with transparent background. This is
+the slowest but most beautiful.
+
+This method creates a 32-bit ARGB surface and
+render the given text at high quality, using
+alpha blending to dither the font with the given color. This results in a
+surface with alpha transparency, so you don't have a solid colored box around
+the text. The text is antialiased.
+This will render slower than @[TTF#render_solid_utf8], but in
+about the same time as @[TTF#render_shaded_utf8].
+The resulting surface will blit slower
+than if you had used @[TTF#render_solid_utf8] and @[TTF#render_shaded_utf8].
+Use this when you want high quality, and the text isn't changing too fast.
+
+SEEALSO
+TTF#render_solid_utf8
+TTF#render_shaded_utf8
+TTF#draw_blended_utf8
+
+%%
+NAME draw_solid_utf8
+MOD TTF
+TYPE #
+DEP SDL_ttf
+PURPOSE Draw UTF8 text in solid mode
+
+PROTO
+draw_solid_utf8(dest, text, x, y, r, g, b)
+drawSolidUTF8(dest, text, x, y, r, g, b)
+
+DESC
+This method will draw the given $[text]
+with the given font with ($[r], [g], $[b])
+onto $[dest] @[surface|Surface] at ($[x], $[y])
+in @[solid|TTF#render_solid_utf8] mode.
+
+SEEALSO
+TTF#draw_shaded_utf8
+TTF#draw_blended_utf8
+TTF#render_solid_utf8
+
+%%
+NAME draw_shaded_utf8
+MOD TTF
+TYPE #
+DEP SDL_ttf
+PURPOSE Draw UTF8 text in shaded mode
+
+PROTO
+draw_shaded_utf8(dest, text, x, y, fg_r, fg_g, fg_b, bg_r, bg_g, bg_b)
+drawShadedUTF8(dest, text, x, y, fg_r, fg_g, fg_b, bg_r, bg_g, bg_b)
+
+DESC
+This method will draw the given $[text]
+with the given font with ($[fg_r], [fg_g], $[fg_b])
+color onto onto $[dest] @[surface|Surface] at ($[x], $[y])
+with background color ($[bg_r], [bg_g], $[bg_b])
+in @[shaded|TTF#render_shaded_utf8] mode.
+
+SEEALSO
+TTF#draw_solid_utf8
+TTF#draw_blended_utf8
+TTF#render_shaded_utf8
+
+%%
+NAME draw_blended_utf8
+MOD TTF
+TYPE #
+DEP SDL_ttf
+PURPOSE Draw UTF8 text in blended mode
+
+PROTO
+draw_blended_utf8(dest, text, x, y, r, g, b)
+drawBlendedUTF8(dest, text, x, y, r, g, b)
+
+DESC
+This method will draw the given $[text]
+with the given font with ($[r], [g], $[b])
+onto $[dest] @[surface|Surface] at ($[x], $[y])
+in @[blended|TTF#render_blended_utf8] mode.
+
+SEEALSO
+TTF#draw_solid_utf8
+TTF#draw_shaded_utf8
+TTF#render_blended_utf8
+
+%%
+NAME open
+MOD BMFont
+TYPE .
+DEP SGE
+PURPOSE Load a bitmap font from file
+RVAL SDL::BMFont
+
+PROTO
+open(filename, flags)
+
+DESC
+Load a bitmap font from $[filename] file and
+returns new @[BMFont] object.
+
+$[flags] is OR'd combination of following values:
+:SDL::BMFont::TRANSPARENT
+  Transparent (use @[Surface#set_color_key] internally, should usually be set)
+:SDL::BMFont::NOCONVERT
+  Don't @[convert font surface to display format|Surface#display_format]
+  for faster blits.
+:SDL::BMFont::SFONT
+  If you enabled support for SDL_img when compiling
+  SGE you can also set this flag, this enables you to
+  load Karl Bartel's SFont files.
+:SDL::BMFont::PALETTE
+  Converts the font surface to a palette surface
+  (8bit). Don't do this on color fonts or SFonts! Blits from the
+  font surface will be a bit slower but @[BMFont#set_color]
+  will be faster (O(1) instead of O(n^2)).
+
+%%
+NAME close
+MOD BMFont
+TYPE #
+DEP SGE
+PURPOSE Closes a font.
+
+PROTO
+close
+
+DESC
+Closes a font and release the resources.
+
+SEEALSO
+BMFont.open
+BMFont#closed?
+
+%%
+NAME closed?
+MOD BMFont
+TYPE #
+DEP SGE
+PURPOSE Returns whether a font is closed.
+RVAL true/false
+
+PROTO
+closed?
+
+DESC
+Returns whether a font is closed by @[BMFont#close].
+
+SEEALSO
+BMFont#close
+
+%%
+NAME set_color
+MOD BMFont
+TYPE #
+DEP SGE
+PURPOSE Change font color
+
+PROTO
+set_color(r, g, b)
+setColor(r, g, b)
+
+DESC
+Changes the color of the font to ($[r], $[g], $[b]). 
+Doesn't work on 'color
+fonts' or SFonts. Use ((<SDL::BMFont::PALETTE>))
+when @[opening|BMFont.open] the font if
+you're going to use this function often.
+
+%%
+NAME height
+MOD BMFont
+TYPE #
+DEP SGE
+PURPOSE Get height of the font
+RVAL Integer
+
+PROTO
+height
+
+DESC
+Returns height.
+
+SEEALSO
+BMFont#width
+
+%%
+NAME width
+MOD BMFont
+TYPE #
+DEP SGE
+PURPOSE Get width of one character in the font
+RVAL Integer
+
+PROTO
+width
+
+DESC
+Returns the width of one character in $[self] font.
+Doesn't work on SFonts.
+
+SEEALSO
+BMFont#height
+
+%%
+NAME text_size
+MOD BMFont
+TYPE #
+DEP SGE
+PURPOSE Get the size of surface needed
+RVAL [Integer, Integer]
+
+PROTO
+text_size(string)
+textSize(string)
+
+DESC
+Returns the width and height of the $[string] with $[self].
+
+SEEALSO
+BMFont#textout
+
+%%
+NAME textout
+MOD BMFont
+TYPE #
+DEP SGE
+PURPOSE Render the given string
+
+PROTO
+textout(surface, string, x, y)
+
+DESC
+Renders the given $[string] on surface with the given font. 
+($[x], $[y]) is the position of the left top corner. 
+
+COMMENT
+lock ?
+
+SEEALSO
+BMFont#text_size
+
+%%
+NAME open
+MOD Kanji
+TYPE .
+PURPOSE Load bdf font file
+RVAL SDL::Kanji
+
+PROTO
+open(filename, size)
+
+DESC
+Load bdf font data from $[filename] and 
+returns new @[Kanji] obejct.
+$[size] is the height of one character.
+
+SEEALSO
+Kanji#add
+
+%%
+NAME close
+MOD Kanji
+TYPE #
+PURPOSE Closes bdf font data
+
+PROTO
+close
+
+DESC
+Closes bdf font data and release
+the resouces and memories.
+
+SEEALSO
+Kanji.open
+Kanji#closed?
+
+%%
+NAME closed?
+MOD Kanji
+TYPE #
+PURPOSE Returns whether bdf font is closed
+
+PROTO
+closed?
+
+DESC
+Returns whether bdf font is closed by @[Kanji#close]
+
+SEEALSO
+Kanji#close
+
+
+%%
+NAME add
+MOD Kanji
+TYPE #
+PURPOSE Add font data into already loaded font
+
+PROTO
+add(filename)
+
+DESC
+Add font data fromt $[filename] into already loaded font $[self].
+This method combines two or more font files into one.
+
+SEEALSO
+Kanji.open
+
+%%
+NAME set_coding_system
+MOD Kanji
+TYPE #
+PURPOSE Set character encoding
+
+PROTO
+set_coding_system(sys)
+setCodingSystem(sys)
+
+DESC
+Set encoding. $[sys] is one of following:
+* SDL::Kanji::SJIS
+* SDL::Kanji::EUC
+* SDL::Kanji::JIS
+Default is SDL::Kanji::JIS.
+
+SEEALSO
+Kanji#get_coding_system
+
+%%
+NAME get_coding_system
+MOD Kanji
+TYPE #
+PURPOSE Get character encoding
+
+PROTO
+get_coding_system
+getCodingSystem
+
+DESC
+Get encoding. A return value is one of following:
+* SDL::Kanji::SJIS
+* SDL::Kanji::EUC
+* SDL::Kanji::JIS
+Default is SDL::Kanji::JIS.
+
+SEEALSO
+Kanji#set_coding_system
+
+%%
+NAME height
+MOD Kanji
+TYPE #
+PURPOSE Get height of one character
+RVAL Integer
+
+PROTO
+height
+
+DESC
+Returns the height of one character as piexel.
+
+%%
+NAME textwidth
+MOD Kanji
+TYPE #
+PURPOSE Get width of given string
+RVAL Integer
+
+PROTO
+textwidth(text)
+
+DESC
+Get width of given $[text] with $[self] font.
+
+SEEALSO
+Kanji#width
+
+%%
+NAME width
+MOD Kanji
+TYPE #
+PURPOSE Get the width of one character
+
+PROTO
+width
+
+DESC
+Returns the width of one character.
+
+SEEALSO
+Kanji#textwidth
+
+%%
+NAME put
+MOD Kanji
+TYPE #
+PURPOSE Render text
+
+PROTO
+put(surface, text, x, y, r, g, b)
+
+DESC
+Renders $[text] at ($[x], $[y]) in $[surface]
+with ($[r], $[g], $[b]) color.
+
+NOTES
+If Ruby/SDL m17n support is enabled, $[text] 
+will be converted to suitable encoding.
+
+SEEALSO
+Kanji#put_tate
+Kanji#set_coding_system
+
+%%
+NAME put_tate
+MOD Kanji
+TYPE #
+PURPOSE Render tategaki text
+
+PROTO
+put_tate(surface, x, y, r, g, b)
+putTate(surface, x, y, r, g, b)
+
+DESC
+Renders $[text] as tagetaki at ($[x], $[y]) in $[surface]
+with ($[r], $[g], $[b]) color.
+
+`Half-width' character is not rendered.
+
+NOTES
+If Ruby/SDL m17n support is enabled, $[text] 
+will be converted to suitable encoding.
+
+SEEALSO
+Kanji#put
+Kanji#set_coding_system
+

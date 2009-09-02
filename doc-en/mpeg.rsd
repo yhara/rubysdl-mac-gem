@@ -1,0 +1,609 @@
+= MPEG playback
+* ((<MPEG playback Outline>))
+* ((<SDL::MPEG>))
+* ((<SDL::MPEG::Info>))
+* ((<MPEG playback methods>))
+TOC
+
+== MPEG playback Outline
+Ruby/SDL enables you to play MPEG movie 
+with ((<SMPEG|URL:http://www.icculus.org/smpeg>)).
+
+Before calling MPEG methods, @[init] should be called 
+with SDL::INIT_AUDIO|SDL::INIT_VIDEO and 
+@[Mixer.open] should be called.
+
+MPEG playback system runs in sub thread(native thread).
+Therefore you cannot read and write movie @[Surface] 
+while playing. In addition you cannot use @[Mixer] 
+routines while playing if @[audio is enabled|MPEG#enable_audio].
+Ruby/SDL doesn't control such an invalid access.
+
+== SDL::MPEG
+This class represents MPEG stream and playing state.
+
+METHODS(MPEG)
+
+== SDL::MPEG::Info
+This class represents @[MPEG] information.
+You can get instance by @[MPEG#info].
+
+METHODS(MPEG::Info)
+
+== MPEG playback methods
+%%%
+NAME new
+MOD MPEG
+TYPE .
+DEP SMPEG
+PURPOSE Load MPEG file.
+RVAL SDL::MPEG
+
+PROTO
+new(filename)
+load(filename)
+
+DESC
+Loads a $[filename] and returns 
+new @[MPEG] object.
+
+EXCEPTION *
+
+SEEALSO
+MPEG#info
+MPEG#play
+
+%%
+NAME info
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Get information about MPEG object
+RVAL SDL::MPEG::Info
+
+PROTO
+info
+
+DESC
+Gets information about $[self] as @[MPEG::Info] object.
+
+SEEALSO
+MPEG::Info
+
+%%
+NAME enable_audio
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Enable/Dislable audio
+
+PROTO
+enable_audio(enable)
+enableAudio(enable)
+
+DESC
+Enables or disables audio.
+If $[enable] is true, audio data is played, but if $[enable]
+is false, audio data is not played.
+
+NOTES
+Audio enable/disable setting is reflected after
+playing starts.
+
+SEEALSO
+MPEG#enable_video
+MPEG#info
+
+%%
+NAME enable_video
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Enable/Disable video
+
+PROTO
+enable_video(enable)
+enableVideo(enable)
+
+DESC
+Enables or disables audio.
+If $[enable] is true, movie data is played, but if $[enable]
+is false, movie data is not played.
+
+SEEALSO
+MPEG#enable_audio
+MPEG#info
+
+%%
+NAME status
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Get current status
+RVAL Integer
+
+PROTO
+status
+
+DESC
+Returns current status of $[self] as follows:
+* SDL::MEPG::ERROR - system has some errors
+* SDL::MPEG::STOPPED - movie is stopped
+* SDL::MPEG::PLAYING - movie is playing
+
+SEEALSO
+MPEG#info
+
+%%
+NAME set_volume
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Change volume of MPEG stream
+
+PROTO
+set_volume(volume)
+setVolume(volume)
+
+DESC
+Set volume MPEG stream from 0 to 100.
+
+NOTES
+You cannot get current volume.
+
+SEEALSO
+MPEG#enable_audio
+
+%%
+NAME set_display
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Set display surface
+
+PROTO
+set_display(surface)
+setDisplay(surface)
+
+DESC
+Sets the @[surface|Surface] that the playing movie displays on.
+Normally, the surface object returned by @[set_video_mode]
+is used as $[surface].
+
+NOTES
+MPEG playback system call @[Screen#update_rect] from 
+a (native) sub thread.
+
+SEEALSO
+Surface
+MPEG#play
+
+%%
+NAME set_loop
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Set/Clear looping play
+
+PROTO
+set_loop(repeat)
+setLoop(repeat)
+
+DESC
+Set or clear looping play on $[self].
+
+SEEALSO
+MPEG#play
+
+%%
+NAME scale_xy
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Scale pixel display
+
+PROTO
+scale_xy(width, height)
+scaleXY(width, height)
+
+DESC
+Set scale pixel display on $[self].
+The Unit of $[width] and $[height] is pixel.
+
+SEEALSO
+MPEG#scale
+MPEG#set_display_region
+
+%%
+NAME scale
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Scale pixel display
+
+PROTO
+scale(scale)
+
+DESC
+Set scale display on $[self].
+
+SEEALSO
+MPEG#scale_xy
+
+%%
+NAME move
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Move the video display area
+
+PROTO
+move(x, y)
+
+DESC
+Moves the video display to ($[x], $[y]) 
+within the destination surface set by @[MPEG#set_display].
+
+SEEALSO
+MPEG#set_display
+MPEG#set_display_region
+
+%%
+NAME set_display_region
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Set the video display region
+
+PROTO
+set_display_region(x, y, w, h)
+
+DESC
+Set the region of the video to be shown at 
+the rectangle of $[x], $[y], $[w], $[h]
+
+SEEALSO
+MPEG#move
+MPEG#scale_xy
+
+%%
+NAME play
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Play an MPEG object
+
+PROTO
+play
+
+DESC
+Plays an MPEG object.
+
+
+NOTES
+You don't have to access surface set by @[MPEG#set_display].
+x
+SEEALSO
+MPEG#pause
+MPEG#stop
+MPEG#rewind
+MPEG#seek
+MPEG#skip
+MPEG#render_frame
+
+%%
+NAME stop
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Stop playback of an MPEG object
+
+PROTO
+stop
+
+DESC
+Stop play back of $[self].
+
+SEEALSO
+MPEG#play
+
+%%
+NAME pause
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Pause/Resume playback of an MPEG object
+
+PROTO
+pause
+
+DESC
+Pauses/Resumes playback of $[self].
+Pauses playback if $[self] is playing, and
+Resume playback if paused.
+
+%%
+NAME rewind
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Rewind the play position 
+
+PROTO
+rewind
+
+DESC
+Rewinds the play position of $[self]
+to the beginning of the MPEG.
+
+
+%%
+NAME seek
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Seek in the MPEG stream.
+
+PROTO
+seek(bytes)
+
+DESC
+Seeks $[bytes] ((*bytes*)) the play position of $[self].
+
+SEEALSO
+MPEG#play
+MPEG#skip
+
+%%
+NAME skip
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Skip seconds in the MPEG stream
+
+PROTO
+skip(seconds)
+
+DESC
+Skips $[seconds] seconds in $[self] MPEG stream.
+$[seconds] can be Float or Integer.
+
+SEEALSO
+MPEG#play
+MPEG#seek
+
+%%
+NAME render_frame
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Render a particular frame in the MPEG video.
+
+PROTO
+render_frame(framenum)
+
+DESC
+Render the $[framenum]-th frame in the surface set by
+@[MEPG#set_display].
+
+SEEALSO
+MPEG#render_final
+MPEG#play
+
+%%
+NAME render_final
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Render the last frame of an MPEG video
+
+PROTO
+render_final(dst, x, y)
+
+DESC
+Render the last frame of $[self] video 
+at ($[x], $[y]) in the $[dst] @[surface|Surface].
+
+%%
+NAME set_filer
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE Set video filter
+
+PROTO
+set_filer(filter)
+
+DESC
+Selects video filter from one of following:
+* SDL::MPEG::NULL_FILTER no filter
+* SDL::MPEG::BILIEAR_FILTER bilinear filter
+* SDL::MPEG::DEBLOCKING_FILTER deblocking filter
+
+%%
+NAME has_audio
+MOD MPEG::Info
+TYPE #
+DEP SMPEG
+PURPOSE Get whether an MPEG stream has audio data
+RVAL true/false
+
+PROTO
+has_audio
+
+DESC
+Returns true if $[self] MPEG stream has audio data,
+otherwise returns false.
+
+%%
+NAME has_video
+MOD MPEG::Info
+TYPE #
+DEP SMPEG
+PURPOSE Get whether an MPEG stream has video data
+RVAL true/false
+
+PROTO
+has_video
+
+DESC
+Returns true if $[self] MPEG stream has video data,
+otherwise returns false.
+
+%%
+NAME width
+MOD MPEG::Info
+TYPE #
+DEP SMPEG
+PURPOSE Get width of video
+
+PROTO
+width
+
+DESC
+Returns the width of video as pixels.
+
+
+%%
+NAME height
+MOD MPEG::Info
+TYPE #
+DEP SMPEG
+PURPOSE Get height of video
+
+PROTO
+height
+
+DESC
+Returns the width of video as pixels.
+
+%%
+NAME current_frame
+MOD MPEG::Info
+TYPE #
+DEP SMPEG
+PURPOSE
+
+PROTO
+current_frame
+
+DESC
+not documented yet
+
+%%
+NAME current_fps
+MOD MPEG::Info
+TYPE #
+DEP SMPEG
+PURPOSE
+
+PROTO
+current_fps
+
+DESC
+not documented yet
+
+%%
+NAME audio_string
+MOD MPEG::Info
+TYPE #
+DEP SMPEG
+PURPOSE
+
+PROTO
+audio_string
+
+DESC
+not documented yet
+
+%%
+NAME audio_current_frame
+MOD MPEG::Info
+TYPE #
+DEP SMPEG
+PURPOSE
+
+PROTO
+audio_current_frame
+
+DESC
+not documented yet
+
+%%
+NAME current_offset
+MOD MPEG::Info
+TYPE #
+DEP SMPEG
+PURPOSE
+
+PROTO
+current_offset
+
+DESC
+not documented yet
+
+%%
+NAME total_size
+MOD MPEG::Info
+TYPE #
+DEP SMPEG
+PURPOSE
+
+PROTO
+total_size
+
+DESC
+not documented yet
+
+%%
+NAME current_time
+MOD MPEG::Info
+TYPE #
+DEP SMPEG
+PURPOSE
+
+PROTO
+current_time
+
+DESC
+not documented yet
+
+%%
+NAME total_time
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE
+
+PROTO
+total_time
+
+DESC
+not documented yet
+
+%%
+NAME delete
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE
+
+PROTO
+delete
+
+DESC
+not documented yet
+
+%%
+NAME deleted?
+MOD MPEG
+TYPE #
+DEP SMPEG
+PURPOSE
+
+PROTO
+deleted?
+
+DESC
+not documented yet
+

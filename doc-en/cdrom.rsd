@@ -1,0 +1,448 @@
+= CD-ROM
+* ((<CD-ROM outline>))
+* ((<SDL::CD>))
+* ((<CD-ROM methods>))
+TOC
+
+== CD-ROM outline
+SDL supports audio control of up to 32 local CD-ROM drives at once.
+
+You use this API to perform all the basic functions of a CD player, including
+listing the tracks, playing, stopping, and ejecting the CD-ROM. (Currently,
+multi-changer CD drives are not supported.)
+
+Before you call any of the SDL CD-ROM functions, you must first call
+@[init](SDL::INIT_CDROM),
+which scans the system for CD-ROM drives, and sets the program
+up for audio control.
+
+After you have initialized the library, you can find out how many drives are
+available using the @[CD.num_drives]. The first drive listed is the
+system default CD-ROM drive. After you have chosen a drive, and have opened it
+with @[CD.open], you can check the status and start playing if there's a CD in
+the drive.
+
+A CD-ROM is organized into one or more tracks, each consisting of a certain number
+of "frames". Each frame is ~2K in size, and at normal playing speed,
+a CD plays 75(SDL::CD::FPS)
+frames per second. SDL works with the number of frames on a CD, but this can
+easily be converted to the more familiar minutes/seconds format by using
+@[CD.frames_to_msf].
+
+== SDL::CD
+This class represents opened CDROM device and stores information on the
+layout of the tracks on the disc.
+
+== CD-ROM methods
+%%%
+NAME num_drives
+MOD CD
+TYPE .
+PURPOSE Returns the number of CD-ROM drives on the system.
+RVAL Integer
+
+PROTO
+num_drives
+numDrives
+
+DESC
+Returns the number of CD-ROM drives on the system.
+
+SEEALSO
+CD.open
+
+%%
+NAME index_name
+MOD CD
+TYPE .
+PURPOSE Returns a human-readable, system-dependent identifier for the CD-ROM.
+RVAL String
+
+PROTO
+index_name(drive)
+indexName(drive)
+
+DESC
+Returns a human-readable, system-dependent identifier for the CD-ROM. $[drive]
+is the index of the drive.
+Drive indices start to 0 and end at @[CD.num_drives]-1.
+
+Examples of return strings.
+* "/dev/cdrom"
+* "E:"
+* "/dev/disk/ide/1/master"
+
+SEEALSO
+CD.num_drives
+
+%%
+NAME open
+MOD CD
+TYPE .
+PURPOSE Opens a CD-ROM drive for access.
+RVAL SDL::CD
+
+PROTO
+open(drive)
+
+DESC
+Opens a CD-ROM drive for access. It returns @[CD] object on success.
+
+Drives are numbered starting with 0. Drive 0 is the system default CD-ROM.
+
+EXCEPTION
+Raise @[Error] if the drive was invalid or busy.
+
+EXAMPLE
+SDL.init SDL::INIT_CDROM
+
+# Check for CD drives
+if SDL::CD.num_drives == 0
+  # None found
+  STDERR.print "No CDROM devices available\n"
+  exit 255
+end
+
+begin
+  # Open the default drive
+  cdrom = SDL::CD.open(0)
+rescue SDL::Error
+  STDERR.puts "Couldn't open drive"
+  exit 255
+end
+
+# Print volume info
+printf "Name: %s\n", SDL::CD.index_name(0)
+printf "Tracks: %d\n", cdrom.num_tracks
+num_tracks.times do |cur_track|
+  min, sec, frame = SDL::CD.frames_to_msf(cdrom.track_length(cur_track))
+  printf "\tTrack %d: Length %d:%d\n", cur_track, min, sec
+end
+
+%%
+NAME status
+MOD CD
+TYPE #
+PURPOSE Returns the current status of the given drive.
+RVAL UINT
+
+PROTO
+status
+
+DESC
+This method returns the current status of the given drive. Status is described
+like so:
+* SDL::CD::TRAYEMPTY
+* SDL::CD::STOPPED
+* SDL::CD::PLAYING
+* SDL::CD::PAUSED
+* SDL::CD::ERROR
+
+If the drive has a CD in it,
+@[current_track], @[current_frame], @[num_tracks], @[track_type],
+and @[track_length] are updated.
+
+EXAMPLE
+def play_track(track)
+  raise "not cd in drive" unless $cdrom.in_drive?
+
+  # clamp to the actual number of tracks on the CD
+  track = $cdrom.num_tracks-1 if track >= $cdrom.num_tracks
+  $cdrom.play_tracks(track, 0, 1, 0)
+end
+
+%%
+NAME play
+MOD CD
+TYPE #
+PURPOSE Play a CD
+
+PROTO
+play(start, length)
+
+DESC
+Plays the given cdrom, starting a frame $[start] for length $[frames].
+
+EXCEPTION *
+
+SEEALSO
+CD#play_tracks
+
+%%
+NAME play_tracks
+MOD CD
+TYPE #
+PURPOSE Play the given CD track(s)
+
+PROTO
+play_tracks(start_track, start_frame, ntracks, nframes)
+
+DESC
+This method plays the given CD starting at track $[start_track], for $[ntracks]
+tracks.
+
+$[start_frame] is the frame offset, from the beginning of the $[start_track],
+at which to start. $nframes] is the frame offset, from the beginning
+of the last track
+($[start_track]+$[ntracks]), at which to end playing.
+
+THis methods should only be called after calling @[CD#status] to get track
+information about the CD.
+
+NOTES
+Data tracks are ignored.
+
+EXCEPTION *
+
+EXAMPLE
+# assuming cdrom is a previously opened device
+# Play the entire CD
+if cdrom.in_drive?
+  cdrom.play_tracks 0, 0, 0, 0
+end
+# Play the first track
+if cdrom.in_drive?
+  cdrom.play_tracks 0, 0, 1, 0
+end
+# 2 Play first 15 seconds of the 2nd track
+if cdrom.in_drive?
+  cdrom.play_tracks 1, 0, 0, SDL::CD::FPS*15
+end
+SEEALSO
+CD#play
+CD#status
+
+%%
+NAME pause
+MOD CD
+TYPE #
+PURPOSE Pauses a CDROM
+
+PROTO
+pause
+
+DESC
+Pauses play on the given cdrom.
+
+EXCEPTION *
+
+SEEALSO
+CD#play
+CD#resume
+
+%%
+NAME resume
+MOD CD
+TYPE #
+PURPOSE Resumes a CDROM
+
+PROTO
+resume
+
+DESC
+Resumes play on the given cdrom.
+
+EXCEPTION *
+
+SEEALSO
+CD#play
+CD#pause
+
+%%
+NAME stop
+MOD CD
+TYPE #
+PURPOSE Stops a CDROM
+
+PROTO
+stop
+
+DESC
+Stops play on the given cdrom.
+
+EXCEPTION *
+
+SEEALSO
+CD#play
+
+%%
+NAME eject
+MOD CD
+TYPE #
+PURPOSE Ejects a CDROM
+
+PROTO
+eject
+
+DESC
+Ejects the given cdrom.
+
+EXCEPTION *
+
+%%
+NAME num_tracks
+MOD CD
+TYPE #
+PURPOSE Gets number of tracks on the CD.
+RVAL Integer
+
+PROTO
+num_tracks
+numTracks
+
+DESC
+Returns the number of tracks on the given cdrom.
+@[CD#status] updates this value.
+
+SEEALSO
+CD#status
+
+%%
+NAME current_track
+MOD CD
+TYPE #
+PURPOSE Gets current track.
+RVAL Integer
+
+PROTO
+current_track
+currentTrack
+
+DESC
+Returns the currently playing track.
+@[CD#status] updates this value.
+
+SEEALSO
+CD#status
+
+%%
+NAME current_frame
+MOD CD
+TYPE #
+PURPOSE Gets current frame offset within the track
+RVAL Integer
+
+PROTO
+current_frame
+currentFrame
+
+DESC
+Returns the current frame offset with the playing track.
+@[CD#status] updates this value.
+
+SEEALSO
+CD#status
+
+%%
+NAME track_type
+MOD CD
+TYPE #
+PURPOSE Gets track type.
+RVAL UINT
+
+PROTO
+track_type(track)
+trackType(track)
+
+DESC
+Returns the track type in $[track].
+SDL::CD::AUDIO_TRACK or SDL::CD::DATA_TRACK is returned.
+
+%%
+NAME track_length
+MOD CD
+TYPE #
+PURPOSE Gets length of track.
+RVAL Integer
+
+PROTO
+track_length(track)
+trackLength(track)
+
+DESC
+Returns length, in frame, of $[track].
+
+%%
+NAME in_drive?
+MOD CD
+TYPE #
+PURPOSE Check disc in drive
+RVAL true/false
+
+PROTO
+in_drive?
+
+DESC
+Returns true if drive is not empty, otherwise returns false.
+
+SEEALSO
+CD#status
+
+%%
+NAME frames_to_msf
+MOD CD
+TYPE .
+PURPOSE Convert frames into minitus/seconds/frames
+RVAL [Integer, Integer, Integer]
+
+PROTO
+frames_to_msf(frames)
+framesToMSF(frames)
+
+DESC
+Converts frames into minitus/seconds/frames, and returns an array like
+[min, sec, frames].
+
+SEEALSO
+CD.msf_to_frames
+
+%%
+NAME msf_to_frames
+MOD CD
+TYPE .
+PURPOSE Convert minitus/seconds/frames into frames
+RVAL Integer
+
+PROTO
+msf_to_frames(min, sec, frames)
+MSFToFrames(min, sec, frames)
+
+DESC
+Convert minitus/seconds/frames into frames and returns frames.
+
+SEEALSO
+CD.frames_to_msf
+
+%%
+NAME close
+MOD CD
+TYPE #
+PURPOSE Closes a CD handle
+
+PROTO
+close
+
+DESC 
+Closes $[self].
+
+SEEALSO
+CD.open
+CD#closed?
+
+%%
+NAME closed?
+MOD CD
+TYPE #
+PURPOSE Returns whether CD is closed
+
+PROTO
+closed?
+
+DESC 
+Returns whether CD handle is closed by
+@[CD#close]
+
+SEEALSO
+CD#close
+
+

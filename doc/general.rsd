@@ -1,0 +1,71 @@
+= 目次
+* ((<"Ruby/SDLの概要">))
+* ((<初期化>))
+* ((<Video>))
+* ((<OpenGL関連>))
+* ((<Window Management>))
+* ((<Event>))
+* ((<Joystick>))
+* ((<CD-ROM>))
+* ((<Audio>))
+* ((<Time>))
+* ((<Font>))
+* ((<衝突判定>))
+* ((<SDLSKK>))
+* ((<MPEG playback>))
+
+= このドキュメントについて
+このドキュメントはRuby/SDLのリファレンスマニュアルです。
+Ruby/SDLの各機能、各クラス、各メソッドを解説しています。
+
+このリファレンスは
+((<URL:http://www.tacoworks.jp/software/SDLdoc-jp/index-j.html>))
+におけるSDLdoc日本語翻訳プロジェクトの成果を利用しています。
+プロジェクトのみなさんに感謝します。
+
+= Ruby/SDLの概要
+Ruby/SDL は ((<SDL|URL:http://www.libsdl.org/>)) を
+((<Ruby|URL:http://www.ruby-lang.org/>)) から利用するための
+拡張ライブラリです。
+Ruby でゲームなどを使うためなどに利用できます。
+
+Ruby/SDLは、以下の機能を持っています。
+* ((<2D高速描画|Video>))
+* ((<キーボードやマウス|Event>))、((<ジョイスティック|Joystick>))から
+  の入力の取り扱い
+* ((<SDL_mixer|URL:http://www.libsdl.org/projects/SDL_mixer/index.html>))
+  による((<音声再生|Audio>))
+* ((<CD-ROMの再生|CD-ROM>))
+* ((<SDL_ttf|URL:http://www.libsdl.org/projects/SDL_ttf/index.html>))、
+  ((<SDL_kanji|URL:http://shinh.skr.jp/sdlkanji/>))、
+  ((<SGE|URL:http://www.etek.chalmers.se/~e8cal1/sge/index.html>))
+  による((<文字列の描画|Font>))
+* ((<OpenGL Interface|URL:http://www2.giganet.net/~yoshi/>))による
+  3D描画
+* ((<時間の計測および一時停止|Time>))
+* ((<SDLSKK|URL:http://www.kmc.gr.jp/~ohai/sdlskk.html>))による、
+  ((<行単位の日本語入力|SDLSKK>))
+* ((<SMPGE|URL:http://www.icculus.org/smpeg/>))による
+  ((<mpegの再生|MPEG playback>))
+* その他にも、((<Windowの管理|Window Management>))や
+  ((<衝突判定>))など
+
+= Ruby 1.9のm17nについて
+Ruby 1.9では、Stringにエンコーディング情報が付いて
+いますが、Ruby/SDLでは基本的にこの情報を無視します。
+SDLでこのような情報をどうすべきか定義されていないためです。
+
+ただしいくつかのメソッドではRuby 1.9においては
+エンコーディンの利用および付加を行います。
+詳しくは各メソッドの項を見てください。
+
+extconf.rbを実行するときに--enable-m17n/--disable-m17n
+オプションを使うことで、これらのRuby/SDLの
+m17n関連の機能を有効/無効にできます。
+
+== SDL::Error
+SDL固有のエラーを表わす例外クラスです。StandardErrorを継承しています。
+
+== SDL::VERSION
+SDLのバージョンを表わす文字列です。"1.0.0"という形になっています。
+

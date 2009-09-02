@@ -1,7 +1,7 @@
 /*
   Ruby/SDL   Ruby extension library for SDL
 
-  Copyright (C) 2001-2004 Ohbayashi Ippei
+  Copyright (C) 2001-2007 Ohbayashi Ippei
   
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -149,6 +149,29 @@ static VALUE CD_trackLength(VALUE self, VALUE track)
   return INT2FIX(Get_SDL_CD(self)->track[NUM2INT(track)].length);
 }
 
+static VALUE CD_s_framesToMSF(VALUE klass, VALUE frames)
+{
+  int m, s, f;
+  FRAMES_TO_MSF(NUM2INT(frames), &m, &s, &f);
+  return rb_ary_new3(3, INT2FIX(m), INT2FIX(s), INT2FIX(f));
+}
+static VALUE CD_s_MSFToFrames(VALUE klass, VALUE m, VALUE s, VALUE f)
+{
+  return INT2FIX(MSF_TO_FRAMES(NUM2INT(m),NUM2INT(s),NUM2INT(f)));
+}
+static VALUE CD_close(VALUE self)
+{
+  CD* cd = GetCD(self);
+  if( !rubysdl_is_quit() && cd->cd )
+    SDL_CDClose(cd->cd);
+  cd->cd = NULL;
+  return Qnil;
+}
+static VALUE CD_closed(VALUE self)
+{
+  return INT2BOOL(GetCD(self)->cd == NULL);
+}
+
 void rubysdl_init_CD(VALUE mSDL)
 {
   cCD = rb_define_class_under(mSDL, "CD", rb_cObject);
@@ -159,6 +182,8 @@ void rubysdl_init_CD(VALUE mSDL)
   rb_define_singleton_method(cCD, "numDrive", CD_s_numDrive, 0);
   rb_define_singleton_method(cCD, "indexName", CD_s_name, 1);
   rb_define_singleton_method(cCD, "open", CD_s_open, 1);
+  rb_define_singleton_method(cCD, "framesToMSF", CD_s_framesToMSF,1);
+  rb_define_singleton_method(cCD,"MSFToFrames",CD_s_MSFToFrames,3);
   rb_define_method(cCD, "status", CD_status, 0);
   rb_define_method(cCD, "play", CD_play, 2);
   rb_define_method(cCD, "playTracks", CD_playTracks, 4);
@@ -172,7 +197,8 @@ void rubysdl_init_CD(VALUE mSDL)
   rb_define_method(cCD, "currentFrame", CD_currentFrame, 0);
   rb_define_method(cCD, "trackType", CD_trackType, 1);
   rb_define_method(cCD, "trackLength", CD_trackLength, 1);
-
+  rb_define_method(cCD, "close", CD_close, 0);
+  rb_define_method(cCD, "closed?", CD_closed, 0);
   
   rb_define_const(cCD, "TRAYEMPTY", INT2NUM(CD_TRAYEMPTY));
   rb_define_const(cCD, "STOPPED", INT2NUM(CD_STOPPED));
@@ -182,5 +208,5 @@ void rubysdl_init_CD(VALUE mSDL)
   
   rb_define_const(cCD, "AUDIO_TRACK", UINT2NUM(SDL_AUDIO_TRACK));
   rb_define_const(cCD, "DATA_TRACK", UINT2NUM(SDL_DATA_TRACK));
-
+  rb_define_const(cCD, "FPS", UINT2NUM(CD_FPS));
 }

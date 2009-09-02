@@ -1,7 +1,7 @@
 /*
   Ruby/SDL   Ruby extension library for SDL
 
-  Copyright (C) 2001-2004 Ohbayashi Ippei
+  Copyright (C) 2001-2007 Ohbayashi Ippei
   
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -25,8 +25,33 @@
 static VALUE cCollisionMap = Qnil;
 static VALUE cBMFont = Qnil;
 
-DEFINE_GET_STRUCT(sge_bmpFont, Get_sge_bmpFont, cBMFont, "SDL::BMFont");
+typedef struct {
+  sge_bmpFont* font;
+} BmpFont;
+
+DEFINE_GET_STRUCT(BmpFont, Get_BmpFont, cBMFont, "SDL::BMFont");
 DEFINE_GET_STRUCT(sge_cdata, Get_sge_cdata, cCollisionMap, "SDL::CollisionMap");
+
+static sge_bmpFont* Get_sge_bmpFont(VALUE obj)
+{
+  BmpFont* bfont = Get_BmpFont(obj);
+  if (bfont->font == NULL)
+    rb_raise(eSDLError, "Bitmap font is already closed");
+  return bfont->font;
+}
+static void BMFont_free(BmpFont* bfont)
+{
+  if (!rubysdl_is_quit() && bfont->font)
+    sge_BF_CloseFont(bfont->font);
+  free(bfont);
+}
+
+static VALUE BMFont_create(sge_bmpFont* font)
+{
+  BmpFont* bfont = ALLOC(BmpFont);
+  bfont->font = font;
+  return Data_Wrap_Struct(cBMFont, 0, BMFont_free, bfont);
+}
 
 static VALUE Surface_s_autoLock_p(VALUE klass)
 {
@@ -181,7 +206,6 @@ static VALUE Surface_drawEllipse(int argc, VALUE* argv, VALUE self)
   if(RTEST(fill_) && !RTEST(aa_) && !RTEST(alpha_))
     sge_FilledEllipse(surface, x, y, rx, ry, color);
 
-  
   if(!RTEST(fill_) && RTEST(aa_) && RTEST(alpha_))
     sge_AAEllipseAlpha(surface, x, y, rx, ry, color, NUM2UINT(alpha_));
 
@@ -197,6 +221,63 @@ static VALUE Surface_drawEllipse(int argc, VALUE* argv, VALUE self)
   return Qnil;
 }
 
+static VALUE Surface_drawBezier(int argc, VALUE* argv, VALUE self)
+{
+  SDL_Surface* surface;
+  VALUE coords_[8], level_, color_;
+  VALUE aa_, alpha_;
+  int coords[8];
+  Uint32 color;
+  int level;
+  int i;
+  
+  rb_secure(4);
+  /* WARNING:  ':' == '9' + 1
+  */
+  rb_scan_args(argc, argv, ":2",
+               &coords_[0], &coords_[1],
+               &coords_[2], &coords_[3],
+               &coords_[4], &coords_[5],
+               &coords_[6], &coords_[7],
+               &level_, &color_,
+               &aa_, &alpha_);
+  surface = Get_SDL_Surface(self);
+  for (i=0; i<8; i++)
+    coords[i] = NUM2INT(coords_[i]);
+  color = VALUE2COLOR(color_, surface->format);
+  level = NUM2INT(level_);
+  
+  if(RTEST(aa_) && RTEST(alpha_))
+    sge_AABezierAlpha(surface,
+                      coords[0], coords[1],
+                      coords[2], coords[3],
+                      coords[4], coords[5],
+                      coords[6], coords[7],
+                      level, color, NUM2UINT(alpha_));
+  if(!RTEST(aa_) && RTEST(alpha_))
+    sge_BezierAlpha(surface,
+                    coords[0], coords[1],
+                    coords[2], coords[3],
+                    coords[4], coords[5],
+                    coords[6], coords[7],
+                    level, color, NUM2UINT(alpha_));
+  if(RTEST(aa_) && !RTEST(alpha_))
+    sge_AABezier(surface,
+                 coords[0], coords[1],
+                 coords[2], coords[3],
+                 coords[4], coords[5],
+                 coords[6], coords[7],
+                 level, color);
+  if(!RTEST(aa_) && !RTEST(alpha_))
+    sge_Bezier(surface,
+               coords[0], coords[1],
+               coords[2], coords[3],
+               coords[4], coords[5],
+               coords[6], coords[7],
+               level, color);
+  return Qnil;
+}
+  
 static VALUE Surface_s_transformDraw(VALUE klass, VALUE src, VALUE dst,
                                      VALUE angle, 
                                      VALUE xscale, VALUE yscale,
@@ -239,10 +320,10 @@ static VALUE Surface_makeCollisionMap(VALUE self)
 
 
 static VALUE CollisionMap_s_boundingBoxCheck(VALUE klass, 
-                                             VALUE x1,  VALUE y1,
-                                             VALUE w1,  VALUE h1, 
-                                             VALUE x2,  VALUE y2,
-                                             VALUE w2,  VALUE h2)
+                                             VALUE x1, VALUE y1,
+                                             VALUE w1, VALUE h1, 
+                                             VALUE x2, VALUE y2,
+                                             VALUE w2, VALUE h2)
 {
   return INT2BOOL(_sge_bbcheck
                   ((Sint16) NUM2INT(x1),  (Sint16) NUM2INT(y1), 
@@ -313,23 +394,48 @@ static VALUE CollisionMap_clear(VALUE self, VALUE vx, VALUE vy, VALUE vw, VALUE 
   return Qnil;
 }
 
+static VALUE CollisionMap_w(VALUE self)
+{
+  return INT2FIX(Get_sge_cdata(self)->w);
+}
+
+static VALUE CollisionMap_h(VALUE self)
+{
+  return INT2FIX(Get_sge_cdata(self)->h);
+}
+
 /* bitmap font */
+
 static VALUE BMFont_open(VALUE klass,  VALUE file,  VALUE flags)
+
 {
   sge_bmpFont* font;
   rb_secure(4);
-  SafeStringValue(file);
+  ExportFilenameStringValue(file);
   
-  font = sge_BF_OpenFont(RSTRING(file)->ptr, NUM2UINT(flags));
+  font = sge_BF_OpenFont(RSTRING_PTR(file), NUM2UINT(flags));
   if(font == NULL)
-    rb_raise(eSDLError, "Couldn't open font: %s", RSTRING(file)->ptr);
+    rb_raise(eSDLError, "Couldn't open font: %s", RSTRING_PTR(file));
   
-  return Data_Wrap_Struct(cBMFont, 0, sge_BF_CloseFont, font);
+  return BMFont_create(font);
+}
+static VALUE BMFont_close(VALUE self)
+{
+  BmpFont* bfont = Get_BmpFont(self);
+  if (!rubysdl_is_quit() && bfont->font)
+    sge_BF_CloseFont(bfont->font);
+  bfont->font = NULL;
+  return Qnil;
+}
+static VALUE BMFont_closed(VALUE self)
+{
+  return INT2BOOL(Get_BmpFont(self)->font == NULL);
 }
 
 static VALUE BMFont_setColor(VALUE self, VALUE r, VALUE g, VALUE b)
 {
-  sge_BF_SetColor(Get_sge_bmpFont(self), NUM2UINT(r), NUM2UINT(g), NUM2UINT(b));
+  sge_BF_SetColor(Get_sge_bmpFont(self),
+                  NUM2UINT(r), NUM2UINT(g), NUM2UINT(b));
   return Qnil;
 }
 
@@ -343,14 +449,25 @@ static VALUE BMFont_getWidth(VALUE self)
   return INT2FIX(sge_BF_GetWidth(Get_sge_bmpFont(self)));
 }
 
-static VALUE BMFont_textout(VALUE self, VALUE surface, VALUE string, 
+static VALUE BMFont_textSize(VALUE self, VALUE text)
+{
+  SDL_Rect rect;
+  SafeStringValue(text);
+  rect = sge_BF_TextSize(Get_sge_bmpFont(self),
+                         RSTRING_PTR(text));
+  return rb_ary_new3(2, INT2FIX(rect.w), INT2FIX(rect.h));
+}
+
+static VALUE BMFont_textout(VALUE self,
+                            VALUE surface, VALUE string, 
                             VALUE x,  VALUE y)
+
 {
   rb_secure(4);
-  StringValue(string);
+  SafeStringValue(string);
   
   sge_BF_textout(Get_SDL_Surface(surface), Get_sge_bmpFont(self),
-                 RSTRING(string)->ptr, NUM2INT(x), NUM2INT(y));
+                 RSTRING_PTR(string), NUM2INT(x), NUM2INT(y));
   return Qnil;
 }
 
@@ -368,11 +485,12 @@ void rubysdl_init_sge(VALUE mSDL, VALUE cSurface)
   rb_define_method(cSurface, "drawRect", Surface_drawRect, -1);
   rb_define_method(cSurface, "drawCircle", Surface_drawCircle, -1);
   rb_define_method(cSurface, "drawEllipse", Surface_drawEllipse, -1);
+  rb_define_method(cSurface, "drawBezier", Surface_drawBezier, -1);
 
   /* rotation and scaling */
   rb_define_module_function(cSurface, "transformDraw",
                             Surface_s_transformDraw, 10);
-  rb_define_method(cSurface, "transform", Surface_transform, 5);
+  rb_define_method(cSurface, "transformSurface", Surface_transform, 5);
 
   /* collision detection */
   cCollisionMap = rb_define_class_under(mSDL, "CollisionMap", rb_cObject);
@@ -387,16 +505,21 @@ void rubysdl_init_sge(VALUE mSDL, VALUE cSurface)
                    CollisionMap_boundingBoxCheck,  5);
   rb_define_method(cCollisionMap, "clear",  CollisionMap_clear,  4);
   rb_define_method(cCollisionMap, "set",  CollisionMap_set,  4);
+  rb_define_method(cCollisionMap, "w", CollisionMap_w, 0);
+  rb_define_method(cCollisionMap, "h", CollisionMap_h, 0);
+  
 
   /* bitmap font */
   cBMFont = rb_define_class_under(mSDL, "BMFont", rb_cObject);
   rb_undef_alloc_func(cBMFont);
     
   rb_define_singleton_method(cBMFont, "open", BMFont_open, 2);
-
+  rb_define_method(cBMFont, "close", BMFont_close, 0);
+  rb_define_method(cBMFont, "closed?", BMFont_closed, 0);
   rb_define_method(cBMFont, "setColor", BMFont_setColor, 3);
   rb_define_method(cBMFont, "height", BMFont_getHeight, 0);
   rb_define_method(cBMFont, "width", BMFont_getWidth, 0);
+  rb_define_method(cBMFont, "textSize", BMFont_textSize,1);
   rb_define_method(cBMFont, "textout", BMFont_textout, 4);
 
 

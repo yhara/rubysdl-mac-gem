@@ -1,14 +1,11 @@
 
-Ruby/SDL 0.9.5
+Ruby/SDL 2.1.1
 大林一平
 
 1 概要
 
 これは、RubyからSDLの機能を使うための拡張ライブラリです。
 SDLとは、Win32,Linux,BeOS,MacOS,FreeBSD,Solaris等で動く、クロスプラットフォームなゲーム開発用ライブラリです。
-
-これはまだ開発途中のバージョンです。
-
 
 2 動作環境
 LinuxのX上、Win32
@@ -76,13 +73,40 @@ FreeBSDにはPortがあるのでそれを利用してください。
   詳しくは、以下のファイルやドキュメントを見てください。
 
   sample/*.rb サンプル
-    サンプル用のデータが一部欠けています。自分で用意してください。
-  rubysdl_doc.rd リファレンス
+    以下のサンプルがあります。
+        testsprite.rb   画像表示のサンプル
+        playwave.rb     PCMファイル演奏のサンプル sample.wav が必要
+        movesp.rb       キー入力のサンプル
+        alpha.rb        アルファブレンディングのサンプル
+        sgetest.rb      sgeのプリミティブ描画のサンプル
+        font.rb         True Type Fontのサンプル 
+        playmod.rb      modファイル演奏のサンプル sample.it が必要
+        testgl.rb       OpenGLのサンプル
+        cursor.rb       マウスカーソルを変更するサンプルp
+        transformblit.rb 回転縮小拡大のサンプル
+        joy2.rb         ジョイパッド入力のサンプル
+        plaympeg.rb     mpeg表示のサンプル sample.mpgが必要
+        sdlskk.rb       SDLSKKのサンプル。フォントや辞書等必要
+                        詳しくはサンプルのコメントを見てください
+        bfont.rb        ビットマップフォント表示のサンプル
+        kanji.rb        SDL_Kanji機能のサンプル。8x16.bdfとjiskan16.bdf
+                        という2つのbdfファイルが必要
+        collision.rb    衝突検出機能のサンプル
+        その他
+  rubysdl_ref.rd, rubysdl_ref.html リファレンス
+    Ruby/SDLのリファレンスマニュアルです。
+  rubysdl_doc_old.rd 古いリファレンス
+    古いリファレンスです。
   SDLのドキュメント
     SDLのインストールのときに展開したファイルの中にあるはずです。
     また、 http://www.tacoworks.jp/software/SDLdoc-jp/index-j.html
     から日本語のドキュメントも手に入ります。
     リファレンスに書かれていないことはこれを見てください。
+  doc/
+    Makefile
+    rsd.rb
+    *.rsd
+      リファレンスマニュアルの元データです。
 
 6 OpenGLについて
   このライフラリによってOpenGLへのアクセスが可能になります。
@@ -125,9 +149,13 @@ FreeBSDにはPortがあるのでそれを利用してください。
   * 有用な情報、バグレポートをくださった Rorien Dunnさん、Dennis Rankeさん、
     Keita Urashimaさん。
   * SDLの存在を教えてくれ、Ruby/SDLを作るきっかけを与えてくれた田畑さん。
-
+  * SDLdoc 日本語翻訳プロジェクトにかかわったみなさま
+  * サンプル用のフォントを提供してくれた原さん。
+  * #sdl-fan-jp@friend chat のみなさま
+  * Windows版の管理をしてくださるサイロスさん
 9 その他
-  まだテストされていない機能が多くあります(パレット関連の機能など)。
+  まだテストされていない機能が多くあります(パレット関連
+  やMPEG関連のメソッドいくつかなど)。
 
   要望、バグ報告、使用した感想等は、ohai@kmc.gr.jpにメールを出して
   ください。今のところまるで反響がありませんので、簡単な感想でも送ってくれ

@@ -1,5 +1,5 @@
 
-Ruby/SDL 0.9.5
+Ruby/SDL 2.1.1
 Ohbayashi Ippei
 
 1 What's Ruby/SDL
@@ -8,8 +8,6 @@ Ruby/SDL is the ruby extension library to use SDL.
 SDL(Simple DirectMedia Layer) is a cross-platform multimedia library      
 designed to provide fast access to the graphics framebuffer and audio    
 device. See http://www.libsdl.org/ if you want to know SDL in detail.
-
-This is still under development.
 
 2 Platform
 This library supports 
@@ -105,9 +103,14 @@ install on Linux
   Keffin Barnaby : some patches
   Rorien Dunn, Dennis Ranke, Keita Urashima : bug reports and useful information
   Yusuke TABATA : introduce me into SDL world
+  SDLdoc Japanese translation project : base of Ruby/SDL's reference manual
+  Hara Yutaka: Sample TrueTypeFont
+  Members of #sdl-fan-jp @ FriendChat: bug reports and advices
+  Cyross: Windows version maintainance
 
 9 OTHER
-  Many functions are not tested.
+  Some functions, especially SDL::MPEG methods and pallete handling methods,
+  are not tested.
 
   Please send comments and bug reports to the author.
   Author's mail address: ohai@kmc.gr.jp

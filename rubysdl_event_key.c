@@ -1,7 +1,7 @@
 /*
   Ruby/SDL   Ruby extension library for SDL
 
-  Copyright (C) 2001-2004 Ohbayashi Ippei
+  Copyright (C) 2001-2007 Ohbayashi Ippei
   
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -296,6 +296,13 @@ static void define_const(void)
   rb_define_const(mKey, "MOD_SHIFT", UINT2NUM(KMOD_SHIFT));
   rb_define_const(mKey, "MOD_ALT", UINT2NUM(KMOD_ALT));
   rb_define_const(mKey, "MOD_META", UINT2NUM(KMOD_META));
+
+  
+
+  /* key repeat constants*/
+  rb_define_const(mKey, "DEFAULT_REPEAT_DELAY", INT2NUM(SDL_DEFAULT_REPEAT_DELAY));
+  rb_define_const(mKey, "DEFAULT_REPEAT_INTERVAL", INT2NUM(SDL_DEFAULT_REPEAT_INTERVAL));
+  
 }
 
 static VALUE Key_s_scan(VALUE mod)

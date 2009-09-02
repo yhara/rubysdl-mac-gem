@@ -1,7 +1,7 @@
 /*
   Ruby/SDL   Ruby extension library for SDL
 
-  Copyright (C) 2001-2004 Ohbayashi Ippei
+  Copyright (C) 2001-2007 Ohbayashi Ippei
   
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -23,13 +23,14 @@ static VALUE cScreen = Qnil;
 static VALUE cPixelFormat = Qnil;
 static VALUE cVideoInfo = Qnil;
 static VALUE cSurface = Qnil;
+static VALUE eSurfaceLostMem = Qnil;
 
 typedef struct {
   SDL_Surface* surface;
 } Surface;
 
 DEFINE_GET_STRUCT(Surface, GetSurface, cSurface, "SDL::Surface");
-DEFINE_GET_STRUCT(SDL_PixelFormat, Get_SDL_PixelFormat, cPixelFormat, "SDL::PixelFormat");
+DEFINE_GET_STRUCT(SDL_PixelFormat, Get_PixelFormat, cPixelFormat, "SDL::PixelFormat");
 
 SDL_Surface* Get_SDL_Surface(VALUE obj)
 {
@@ -39,6 +40,14 @@ SDL_Surface* Get_SDL_Surface(VALUE obj)
   return sur->surface;
 }
 
+SDL_PixelFormat* Get_SDL_PixelFormat(VALUE obj)
+{
+  if(rb_obj_is_kind_of(obj, cSurface)){
+    return Get_SDL_Surface(obj)->format;
+  }else{
+    return Get_PixelFormat(obj);
+  }
+}
   
 static void Surface_free(Surface* sur)
 {
@@ -80,7 +89,7 @@ static VALUE Screen_create(SDL_Surface* surface)
 Uint32 VALUE2COLOR(VALUE color,SDL_PixelFormat *format)
 {
   if( rb_obj_is_kind_of( color, rb_cArray ) ){
-    switch( RARRAY(color)->len ){
+    switch( RARRAY_LEN(color) ){
     case 3:
       return SDL_MapRGB(format,
 			NUM2UINT(rb_ary_entry(color,0)),
@@ -114,7 +123,9 @@ static VALUE Screen_s_driverName(VALUE klass)
 {
   char namebuf[256];
   rb_secure(4);
-  SDL_VideoDriverName( namebuf, sizeof(namebuf) );
+  if(SDL_VideoDriverName(namebuf, sizeof(namebuf)) == NULL) {
+    rb_raise(eSDLError, "SDL is not initialized yet: %s", SDL_GetError());
+  }
   return rb_str_new2( namebuf );
 }
 
@@ -183,6 +194,23 @@ static VALUE Screen_updateRect(VALUE self,VALUE x,VALUE y,VALUE w,VALUE h)
   return Qnil;
 }
 
+static VALUE Screen_updateRects(int argc, VALUE *argv, VALUE self)
+{
+  SDL_Rect* rects;
+  int i;
+
+  rects = ALLOCA_N(SDL_Rect, argc);
+  for (i=0; i<argc; i++) {
+    rects[i].x = NUM2INT(rb_ary_entry(argv[i], 0));
+    rects[i].y = NUM2INT(rb_ary_entry(argv[i], 1));
+    rects[i].w = NUM2INT(rb_ary_entry(argv[i], 2));
+    rects[i].h = NUM2INT(rb_ary_entry(argv[i], 3));
+  }
+
+  SDL_UpdateRects(Get_SDL_Surface(self), argc, rects);
+  return Qnil;
+}
+
 static VALUE Screen_flip(VALUE self)
 {
   rb_secure(4);
@@ -209,7 +237,7 @@ static VALUE Screen_s_open(VALUE klass,VALUE w,VALUE h,VALUE bpp,
   screen=SDL_SetVideoMode(NUM2INT(w),NUM2INT(h),NUM2INT(bpp),
 			  NUM2UINT(flags));
   if( screen==NULL ){
-    rb_raise(eSDLError,"Cound't set %dx%d %d bpp video mode: %s",
+    rb_raise(eSDLError,"Couldn't set %dx%d %d bpp video mode: %s",
 	     NUM2INT(w),NUM2INT(h),NUM2INT(bpp),SDL_GetError());
   }  
   return Screen_create(screen);
@@ -312,9 +340,9 @@ static VALUE Surface_s_createFrom(VALUE klass,VALUE pixels,VALUE w,
   SDL_Surface *surface;
   void* pixel_data;
   
-  StringValue(pixels);
-  pixel_data = malloc(RSTRING(pixels)->len);
-  memcpy(pixel_data,RSTRING(pixels)->ptr,RSTRING(pixels)->len);
+  SafeStringValue(pixels);
+  pixel_data = ALLOC_N(char, RSTRING_LEN(pixels));
+  memcpy(pixel_data,RSTRING_PTR(pixels),RSTRING_LEN(pixels));
   
   surface = SDL_CreateRGBSurfaceFrom(pixel_data,NUM2INT(w),NUM2INT(h),
                                      NUM2UINT(depth),NUM2INT(pitch),
@@ -331,22 +359,48 @@ static VALUE Surface_s_loadBMP(VALUE klass,VALUE filename)
 {
   SDL_Surface *image;
   rb_secure(4);
-  SafeStringValue(filename);
+  ExportFilenameStringValue(filename);
   
-  image = SDL_LoadBMP(RSTRING(filename)->ptr);
+  image = SDL_LoadBMP(RSTRING_PTR(filename));
   if(image == NULL){
     rb_raise(eSDLError,"Couldn't Load BMP file %s : %s",
-	     RSTRING(filename)->ptr,SDL_GetError());
+	     RSTRING_PTR(filename),SDL_GetError());
   }
+  return Surface_create(image);
+}
+
+static VALUE Surface_s_loadBMPFromIO(VALUE class, VALUE io)
+{
+  volatile VALUE guard = io;
+  SDL_Surface* image;
+  image = SDL_LoadBMP_RW(rubysdl_RWops_from_ruby_obj(io), 1);
+  if(image == NULL)
+    rb_raise(eSDLError, "Couldn't Load BMP file from IO : %s",
+             SDL_GetError());
+  return Surface_create(image);
+}
+
+static VALUE Surface_s_loadBMPFromString(VALUE class, VALUE str)
+{
+  SDL_Surface* image;
+  rb_secure(4);
+  SafeStringValue(str);
+  
+  image = SDL_LoadBMP_RW(SDL_RWFromConstMem(RSTRING_PTR(str),
+                                            RSTRING_LEN(str)),
+                         1);
+  if(image == NULL)
+    rb_raise(eSDLError, "Couldn't Load BMP file from String : %s",
+             SDL_GetError());
   return Surface_create(image);
 }
 
 static VALUE Surface_saveBMP(VALUE self,VALUE filename)
 {
   rb_secure(4);
-  SafeStringValue(filename);
-  if( SDL_SaveBMP(Get_SDL_Surface(self), RSTRING(filename)->ptr)==-1 ){
-    rb_raise(eSDLError,"cannot save %s: %s",RSTRING(filename)->ptr,SDL_GetError());
+  ExportFilenameStringValue(filename);
+  if( SDL_SaveBMP(Get_SDL_Surface(self), RSTRING_PTR(filename))==-1 ){
+    rb_raise(eSDLError,"cannot save %s: %s",RSTRING_PTR(filename),SDL_GetError());
   }
   return Qnil;
 }
@@ -358,6 +412,11 @@ static VALUE Surface_destroy(VALUE self)
     SDL_FreeSurface(sur->surface);
   sur->surface = NULL;
   return Qnil;
+}
+static VALUE Surface_destroyed(VALUE self)
+{
+  Surface* sur = GetSurface(self);
+  return INT2BOOL(sur->surface == NULL);
 }
 
 static VALUE Surface_format(VALUE self)
@@ -444,9 +503,14 @@ static VALUE Surface_s_blit(VALUE klass,VALUE src,VALUE srcX,VALUE srcY,
   dr = (zero_rect_p(dst_rect))?NULL:&dst_rect;
   
   result = SDL_BlitSurface(src_surface, sr, dst_surface, dr);
-  
-  if( result == -1 ){
+
+  switch(result) {
+  case -1:
     rb_raise(eSDLError,"SDL::Surface.blit fail: %s",SDL_GetError());
+    break;
+  case -2:
+    rb_raise(eSurfaceLostMem, "SDL::Surface lost video memory");
+    break;
   }
   return INT2NUM(result);
 }
@@ -523,7 +587,7 @@ static void check_colors(VALUE colors,VALUE firstcolor)
   
   Check_Type(colors,T_ARRAY);
   
-  if( RARRAY(colors)->len+NUM2INT(firstcolor) > 256 )
+  if( RARRAY_LEN(colors)+NUM2INT(firstcolor) > 256 )
     rb_raise(eSDLError,"colors is too large");
 }
 static void set_colors_to_array(VALUE colors,SDL_Color palette[])
@@ -531,10 +595,10 @@ static void set_colors_to_array(VALUE colors,SDL_Color palette[])
   VALUE color;
   int i;
   
-  for( i=0; i < RARRAY(colors)->len; ++i){
+  for( i=0; i < RARRAY_LEN(colors); ++i){
     color = rb_ary_entry(colors,i);
     Check_Type(color,T_ARRAY);
-    if( RARRAY(color)->len != 3)
+    if( RARRAY_LEN(color) != 3)
       rb_raise(rb_eArgError,"a color must be array that has 3 length");
     palette[i].r = NUM2INT(rb_ary_entry(color,0));
     palette[i].g = NUM2INT(rb_ary_entry(color,1));
@@ -553,7 +617,7 @@ static VALUE Surface_setPalette(VALUE self,VALUE flags,
 
   rb_secure(4);
   return INT2BOOL(SDL_SetPalette(Get_SDL_Surface(self), NUM2UINT(flags), palette,
-                                 NUM2INT(firstcolor), RARRAY(colors)->len));
+                                 NUM2INT(firstcolor), RARRAY_LEN(colors)));
 }
 
 static VALUE Surface_setColors(VALUE self,VALUE colors,VALUE firstcolor)
@@ -564,7 +628,7 @@ static VALUE Surface_setColors(VALUE self,VALUE colors,VALUE firstcolor)
   check_colors(colors,firstcolor);
   set_colors_to_array(colors,palette);
   return INT2BOOL(SDL_SetColors(Get_SDL_Surface(self), palette,
-                                NUM2INT(firstcolor), RARRAY(colors)->len));
+                                NUM2INT(firstcolor), RARRAY_LEN(colors)));
 }
 
 static VALUE PixelFormat_pallete(VALUE self)
@@ -669,11 +733,54 @@ static VALUE PixelFormat_amask(VALUE self)
   return UINT2NUM(Get_SDL_PixelFormat(self)->Amask);
 }
 
+static VALUE PixelFormat_Rloss(VALUE self)
+{
+  return UINT2NUM(Get_SDL_PixelFormat(self)->Rloss);
+}
+static VALUE PixelFormat_Gloss(VALUE self)
+{
+  return UINT2NUM(Get_SDL_PixelFormat(self)->Gloss);
+}
+static VALUE PixelFormat_Bloss(VALUE self)
+{
+  return UINT2NUM(Get_SDL_PixelFormat(self)->Rloss);
+}
+static VALUE PixelFormat_Aloss(VALUE self)
+{
+  return UINT2NUM(Get_SDL_PixelFormat(self)->Aloss);
+}
+
+static VALUE PixelFormat_Rshift(VALUE self)
+{
+  return UINT2NUM(Get_SDL_PixelFormat(self)->Rshift);
+}
+static VALUE PixelFormat_Gshift(VALUE self)
+{
+  return UINT2NUM(Get_SDL_PixelFormat(self)->Gshift);
+}
+static VALUE PixelFormat_Bshift(VALUE self)
+{
+  return UINT2NUM(Get_SDL_PixelFormat(self)->Bshift);
+}
+static VALUE PixelFormat_Ashift(VALUE self)
+{
+  return UINT2NUM(Get_SDL_PixelFormat(self)->Ashift);
+}
+
+static VALUE Surface_pitch(VALUE self)
+{
+  return UINT2NUM(Get_SDL_Surface(self)->pitch);
+}
+static VALUE PixelFormat_bytesPerPixel(VALUE self)
+{
+  return UINT2NUM(Get_SDL_PixelFormat(self)->BytesPerPixel);
+}
+
 static VALUE Surface_pixels(VALUE self)
 {
   SDL_Surface *surface = Get_SDL_Surface(self);
   return rb_str_new(surface->pixels,
-                    surface->w * surface->h * surface->format->BytesPerPixel);
+                    surface->h * surface->pitch);
 }
 
 VALUE rubysdl_init_video(VALUE mSDL)
@@ -681,7 +788,8 @@ VALUE rubysdl_init_video(VALUE mSDL)
   cSurface = rb_define_class_under(mSDL,"Surface",rb_cObject);
   cScreen = rb_define_class_under(mSDL,"Screen",cSurface);
   cPixelFormat = rb_define_class_under(mSDL, "PixelFormat", rb_cObject);
-  
+  eSurfaceLostMem = rb_define_class_under(cSurface, "VideoMemoryLost",
+                                          rb_eStandardError);
   rb_define_alloc_func(cSurface, Surface_s_alloc);
   rb_undef_alloc_func(cPixelFormat);
   
@@ -715,9 +823,12 @@ VALUE rubysdl_init_video(VALUE mSDL)
   rb_define_singleton_method(cSurface,"createWithFormat",Surface_s_createWithFormat,8);
   rb_define_singleton_method(cSurface,"new_from",Surface_s_createFrom,9);
   rb_define_singleton_method(cSurface,"loadBMP",Surface_s_loadBMP,1);
+  rb_define_singleton_method(cSurface,"loadBMPFromIO",Surface_s_loadBMPFromIO,1);
+  rb_define_singleton_method(cSurface,"loadBMPFromString",Surface_s_loadBMPFromString,1);
   
   rb_define_method(cSurface,"saveBMP",Surface_saveBMP,1);
   rb_define_method(cSurface,"destroy",Surface_destroy,0);
+  rb_define_method(cSurface,"destroyed?",Surface_destroyed,0);
   rb_define_method(cSurface,"displayFormat",Surface_displayFormat,0);
   rb_define_method(cSurface,"displayFormatAlpha",Surface_displayFormatAlpha,0);
   rb_define_method(cSurface,"setColorKey",Surface_setColorKey,2);
@@ -748,15 +859,26 @@ VALUE rubysdl_init_video(VALUE mSDL)
   rb_define_method(cPixelFormat,"getRGB",PixelFormat_getRGB,1);
   rb_define_method(cPixelFormat,"getRGBA",PixelFormat_getRGBA,1);
   rb_define_method(cPixelFormat,"bpp",PixelFormat_bpp,0);
+  rb_define_method(cPixelFormat,"bytesPerPixel",PixelFormat_bytesPerPixel,0);
   rb_define_method(cPixelFormat,"colorkey",PixelFormat_colorkey,0);
   rb_define_method(cPixelFormat,"alpha",PixelFormat_alpha,0);
   rb_define_method(cPixelFormat,"Rmask",PixelFormat_rmask,0);
   rb_define_method(cPixelFormat,"Gmask",PixelFormat_gmask,0);
   rb_define_method(cPixelFormat,"Bmask",PixelFormat_bmask,0);
   rb_define_method(cPixelFormat,"Amask",PixelFormat_amask,0);
+  rb_define_method(cPixelFormat,"Rloss",PixelFormat_Rloss,0);
+  rb_define_method(cPixelFormat,"Gloss",PixelFormat_Gloss,0);
+  rb_define_method(cPixelFormat,"Bloss",PixelFormat_Bloss,0);
+  rb_define_method(cPixelFormat,"Aloss",PixelFormat_Aloss,0);
+  rb_define_method(cPixelFormat,"Rshift",PixelFormat_Rshift,0);
+  rb_define_method(cPixelFormat,"Gshift",PixelFormat_Gshift,0);
+  rb_define_method(cPixelFormat,"Bshift",PixelFormat_Bshift,0);
+  rb_define_method(cPixelFormat,"Ashift",PixelFormat_Ashift,0);
   rb_define_method(cSurface,"pixels",Surface_pixels,0);
+  rb_define_method(cSurface,"pitch",Surface_pitch,0);
   
   rb_define_method(cScreen,"updateRect",Screen_updateRect,4);
+  rb_define_method(cScreen,"updateRects",Screen_updateRects,-1);
   rb_define_method(cScreen,"flip",Screen_flip,0);
   rb_define_method(cScreen,"toggleFullScreen",Screen_toggleFullScreen,0);
 
@@ -772,6 +894,7 @@ VALUE rubysdl_init_video(VALUE mSDL)
   rb_define_const(mSDL,"OPENGL",UINT2NUM(SDL_OPENGL));
   rb_define_const(mSDL,"OPENGLBLIT",UINT2NUM(SDL_OPENGLBLIT));
   rb_define_const(mSDL,"RESIZABLE",UINT2NUM(SDL_RESIZABLE));
+  rb_define_const(mSDL,"NOFRAME", UINT2NUM(SDL_NOFRAME));
   rb_define_const(mSDL,"HWACCEL",UINT2NUM(SDL_HWACCEL));
   rb_define_const(mSDL,"SRCCOLORKEY",UINT2NUM(SDL_SRCCOLORKEY));
   rb_define_const(mSDL,"RLEACCELOK",UINT2NUM(SDL_RLEACCELOK));

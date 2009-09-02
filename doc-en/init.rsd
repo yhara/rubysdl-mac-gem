@@ -1,0 +1,168 @@
+= Initialize
+TOC
+
+Before SDL can be used in a program it must be initialized
+with @[init]. @[init] initializes all the subsystems that
+ the user requests (video, audio, joystick, timers and/or cdrom).
+
+== Methods
+%%%
+NAME init
+TYPE .
+PURPOSE Initializes SDL
+
+PROTO
+init(flags)
+
+DESC
+Initializes SDL. This should be called before all other 
+Ruby/SDL methods. The $[flags] parameter specifies what
+ part(s) of SDL to initialize.
+:SDL::INIT_AUDIO
+  Initialize autio subsystems.
+:SDL::INIT_VIDEO
+  Initialize ((<Video>)) subsystem.
+:SDL::INIT_CDROM
+  Initialize ((<CD-ROM>)) subsystem.
+:SDL::INIT_JOYSTICK
+  Initialize ((<Joystick>)) subsystem.
+:SDL::INIT_EVERYTHING
+  Initialize all of the avobe.
+
+EXCEPTION *
+
+%%
+NAME quit
+TYPE .
+PURPOSE Shut down SDL
+
+PROTO
+quit
+
+DESC
+This method shots down all SDL subsystem and frees the resources
+allocated to them. Because this method is automatically called 
+when ruby stops, you don't have to call this function normally.
+
+You should know SDL and Ruby/SDL very well when you use
+this method.
+
+%%
+NAME inited_system
+TYPE .
+PURPOSE Check which subsystems are initialized
+RVAL UINT
+
+PROTO
+inited_system(flags)
+initedSystem(flags)
+
+DESC
+This method allows you to see which SDL subsytems have
+ been @[initialized|init]. $[flags] is a bitwise OR'd 
+combination of the subsystems you wish to check 
+(see @[init] for a list of subsystem flags).
+
+RET
+Returns a bitwised OR'd combination of the initialized subsystems.
+
+EXAMPLE
+# Here are several ways you can use SDL.inited_system
+
+# Get init data on all the subsystem
+subsystem_init = SDL.inited_system(SDL::INIT_EVERYTHING)
+
+if subsystem_init & SDL::INIT_VIDEO
+  puts "video is initialized"
+else
+  puts "video is not initialized"
+end
+
+# Just check for one specfic subsystem
+
+if SDL.inited_system(SDL::INIT_VIDEO) != 0
+  puts "Video is initialized"
+else
+  puts "Video is not initialized        "
+end
+
+# Check for two subsystem
+
+subsystem_mask = SDL::INIT_VIDEO|SDL::INIT_AUDIO;
+
+if SDL.inited_system(subsystem_mask) == subsystem_mask
+  puts "Video and Audio initialized."
+else
+  puts "Video and Audio not initialized"
+end
+
+SEEALSO
+init
+
+%%
+NAME getenv
+TYPE .
+PURPOSE Get an environmental variable
+RVAL String
+
+PROTO
+getenv(var)
+
+DESC
+Returns the environment variable string matched by $[var].
+
+
+%%
+NAME putenv
+TYPE .
+PURPOSE Change or add an  environmental variable
+
+PROTO
+putenv(string)
+
+DESC
+Add or Change the value of environmental variables.
+The argument $[string] is of the form "name=value"
+
+If you want to change SDL_WINDOWID or SDL_VIDEODRIVER environmental variable 
+to modify the behavior of SDL in your program, you should use 
+this function instead of ENV.
+
+EXCEPTION *
+
+EXAMPLE
+# from http://moriq.tdiary.net/20051006.html 
+# Apollo with Ruby/SDL
+require 'phi'
+require 'sdl'
+
+# Create form
+form = Phi::Form.new
+$terminated = false
+form.on_close{ $terminated = true }
+form.caption = "Ruby/SDL on Phi::Form"
+# Create a panel on new form
+panel = Phi::Panel.new(form)
+panel.align = Phi::AL_LEFT
+
+# Put SDL window on panel with WINDOWID hack
+SDL.putenv("SDL_VIDEODRIVER=windib")
+SDL.putenv("SDL_WINDOWID=#{panel.handle}")
+form.show
+
+# initialize SDL
+SDL.init(SDL::INIT_VIDEO)
+screen = SDL.setVideoMode(640, 480, 16, SDL::SWSURFACE)
+
+# main loop
+unless $terminated
+  while event = SDL::Event2.poll
+    case event
+    when SDL::Event2::KeyDown, SDL::Event2::Quit
+      exit
+    end
+  end
+
+  sleep 0.05
+end
+

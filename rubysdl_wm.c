@@ -1,7 +1,7 @@
 /*
   Ruby/SDL   Ruby extension library for SDL
 
-  Copyright (C) 2001-2004 Ohbayashi Ippei
+  Copyright (C) 2001-2007 Ohbayashi Ippei
   
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -25,15 +25,20 @@ static VALUE WM_s_caption(VALUE mod)
   
   rb_secure(4);
   SDL_WM_GetCaption(&title, &icon);
+#ifdef ENABLE_M17N
+  return rb_ary_new3(2,
+                     ENC_STR_NEW2(title, utf8_enc),
+                     ENC_STR_NEW2(icon, utf8_enc));
+#else
   return rb_ary_new3(2, rb_str_new2(title), rb_str_new2(icon));
+#endif
 }
 static VALUE WM_s_setCaption(VALUE mod, VALUE title, VALUE icon)
 {
   rb_secure(4);
-  SafeStringValue(title);
-  SafeStringValue(icon);
-  
-  SDL_WM_SetCaption(RSTRING(title)->ptr, RSTRING(icon)->ptr);
+  ExportStringValueToEnc(title, utf8_enc);
+  ExportStringValueToEnc(icon, utf8_enc);
+  SDL_WM_SetCaption(RSTRING_PTR(title), RSTRING_PTR(icon));
   return Qnil;
 }
 static VALUE WM_s_set_icon(VALUE mod, VALUE icon)
@@ -68,4 +73,5 @@ void rubysdl_init_WM(VALUE mSDL)
   rb_define_const(mWM, "GRAB_QUERY", INT2NUM(SDL_GRAB_QUERY));
   rb_define_const(mWM, "GRAB_OFF", INT2NUM(SDL_GRAB_OFF));
   rb_define_const(mWM, "GRAB_ON", INT2NUM(SDL_GRAB_ON));
+
 }

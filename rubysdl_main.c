@@ -1,7 +1,7 @@
 /*
   Ruby/SDL   Ruby extension library for SDL
 
-  Copyright (C) 2001-2004 Ohbayashi Ippei
+  Copyright (C) 2001-2007 Ohbayashi Ippei
   
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -36,7 +36,7 @@ static VALUE sdl_s_initSubSystem(VALUE mod, VALUE flags)
   return Qnil;
 }
 
-static VALUE sdl_s_wasInit(VALUE mod, VALUE flags)
+static VALUE sdl_s_inited_system(VALUE mod, VALUE flags)
 {
   return UINT2NUM(SDL_WasInit(NUM2UINT(flags)));
 }
@@ -46,8 +46,8 @@ static VALUE sdl_s_putenv(VALUE mod, VALUE var)
   rb_secure(4);
   SafeStringValue(var);
   
-  if( putenv(RSTRING(var)->ptr) < 0 ){
-    rb_raise(eSDLError, "Can't put environ variable: %s",  RSTRING(var)->ptr);
+  if( putenv(RSTRING_PTR(var)) < 0 ){
+    rb_raise(eSDLError, "Can't put environ variable: %s",  RSTRING_PTR(var));
   }
   return Qnil;
 }
@@ -56,9 +56,9 @@ static VALUE sdl_s_getenv(VALUE mod, VALUE name)
 {
   char* result;
   SafeStringValue(name);
-  result = getenv(RSTRING(name)->ptr);
+  result = getenv(RSTRING_PTR(name));
   if(result == NULL){
-    rb_raise(eSDLError, "Can't get environ variable: %s",  RSTRING(name)->ptr);
+    rb_raise(eSDLError, "Can't get environ variable: %s",  RSTRING_PTR(name));
   }
   return rb_str_new2(result);
 }
@@ -68,7 +68,7 @@ int rubysdl_is_quit(void)
 {
   return is_quit;
 }
-static void sdl_quit()
+static void sdl_quit(VALUE v)
 {
   if(rubysdl_is_quit())
     return;
@@ -80,18 +80,25 @@ static void sdl_quit()
 
 static VALUE sdl_s_quit(VALUE obj)
 {
-  sdl_quit();
+  sdl_quit(0);
   return Qnil;
 }
 
-void Init_sdl()
+void Init_sdl_ext()
 {
   VALUE mSDL = rb_define_module("SDL");
   VALUE cSurface;
-  
+
+#ifdef ENABLE_M17N
+  utf8_enc = rb_utf8_encoding();
+  eucjp_enc = rb_enc_find("EUC-JP");
+  iso2022jp_enc = rb_enc_find("ISO-2022-JP");
+  sjis_enc = rb_enc_find("SJIS");
+#endif
+
   eSDLError = rb_define_class_under(mSDL, "Error", rb_eStandardError);
   rb_define_module_function(mSDL, "init", sdl_s_init, 1);
-  rb_define_module_function(mSDL, "wasInit", sdl_s_wasInit, 1);
+  rb_define_module_function(mSDL, "initedSystem", sdl_s_inited_system, 1);
   rb_define_module_function(mSDL, "initSubSystem", sdl_s_initSubSystem, 1);
   rb_define_module_function(mSDL, "quit", sdl_s_quit, 0);
   rb_define_module_function(mSDL, "putenv", sdl_s_putenv, 1);

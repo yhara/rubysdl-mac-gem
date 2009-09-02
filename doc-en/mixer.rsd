@@ -1,0 +1,937 @@
+= Audio
+* ((<Audio subsystem outline>))
+* ((<Audio Format>))
+* ((<SDL::Mixer>))
+* ((<SDL::Mixer::Wave>))
+* ((<SDL::Mixer::Music>))
+* Audio methods
+TOC
+
+== Audio subsystem outline
+SDL has portable and low-level audio playback system. 
+Because this system is too low-level to use from Ruby,
+you can use only SDL_mixer functions from Ruby.
+So you should install SDL_mixer before using audio playback.
+
+Due to popular demand, here is a simple multi-channel audio mixer. It supports 8 channels of 16 bit
+stereo audio, plus a single channel of music, mixed by the popular MikMod MOD, Timidity MIDI and SMPEG
+MP3 libraries.
+
+The process of mixing MIDI files to wave output is very CPU intensive, so if playing regular WAVE files
+sound great, but playing MIDI files sound choppy, try using 8-bit audio, mono audio, or lower
+frequencies.
+
+To play MIDI files, you'll need to get a complete set of GUS patches from:
+((<Timidity GUS Patches|URL:http://www.libsdl.org/projects/mixer/timidity/timidity.tar.gz>))
+and unpack them in /usr/local/lib under UNIX, and C:\ under Win32.
+
+
+== Available audio formats
+
+Ruby/SDL supports playing music and sound samples from the following formats:
+- WAVE/RIFF (.wav)
+- AIFF (.aiff)
+- VOC (.voc)
+- MOD (.mod .xm .s3m .669 .it .med and more) using included mikmod
+- MIDI (.mid) using timidity or native midi hardware
+- OggVorbis (.ogg) requiring ogg/vorbis libraries on system
+- MP3 (.mp3) requiring SMPEG library on system
+
+== SDL::Mixer
+Module for audio playback subsystem.
+
+== SDL::Mixer::Wave
+Class for sound samples. Ruby/SDL can play those samples with multi-channel.
+Support formats are WAVE, AIFF, RIFF, OGG, VOC.
+
+== SDL::Mixer::Music
+Class for audio data.
+Suppor formats are WAVE, MOD, MIDI, OGG, MP3.
+
+== Audio methods
+%%%
+NAME open
+MOD Mixer
+TYPE .
+PURPOSE Initialize the mixer API.
+
+PROTO
+open(frequency=Mixer::DEFAULT_FREQUENCY,format=Mixer::DEFAULT_FORMAT,cannels=Mixer::DEFAULT_CHANNELS,chunksize=4096)
+
+DESC
+Initialize the mixer API.
+This must be called before using other functions in this library.
+SDL must be initialized with SDL::INIT_AUDIO before this call. $[frequency]
+ would be 44100 for 44.1KHz, which is CD audio rate. Most games use 22050, 
+because 44100 requires too much CPU power on older computers.
+$[chunksize] is the size of each mixed sample. The smaller this is the more your hooks will be called. If
+make this too small on a slow system, sound may skip. If made to large, sound effects will lag behind the
+action more. You want a happy medium for your target computer. You also may make this 4096, or larger, if
+you are just playing music. SDL::Mixer::CHANNELS(8)
+ mixing channels will be allocated by default. 
+
+$[format] are the values listed there:
+
+:SDL::Mixer::FORMAT_U8
+    Unsigned 8-bit samples
+:SDL::Mixer::FORMAT_S8
+    Signed 8-bit samples
+:SDL::Mixer::FORMAT_U16LSB
+    Unsigned 16-bit samples, in little-endian byte order
+:SDL::Mixer::FORMAT_S16LSB
+    Signed 16-bit samples, in little-endian byte order
+:SDL::Mixer::FORMAT_U16MSB
+    Unsigned 16-bit samples, in big-endian byte order
+:SDL::Mixer::FORMAT_S16MSB
+    Signed 16-bit samples, in big-endian byte order
+:SDL::Mixer::FORMAT_U16
+    same as FORMAT_U16LSB (for backwards compatability probably)
+:SDL::Mixer::FORMAT_S16
+    same as FORMAT_S16LSB (for backwards compatability probably)
+:SDL::Mixer::FORMAT_U16SYS
+    Unsigned 16-bit samples, in system byte order
+:SDL::Mixer::FORMAT_S16SYS
+    Signed 16-bit samples, in system byte order
+
+SDL::DEFAULT_FORMAT is SDL::Mixer::FORMAT_S16SYS.
+
+$[channels] is number of sound channels in output.
+Set to 2 for stereo, 1 for mono. This has nothing to do with mixing channels.
+Mixer::DEFAULT_CHANNELS is 2.
+
+NOTES
+If you observe sound skipping and delaying, you may change some parameters to
+resolve such problems. 
+Please try to change $[frequency], $[chunksize] and $[format] parameter.
+
+EXAMPLE
+# start SDL with audio support
+SDL.init(SDL::INIT_AUDIO)
+# 44.1KHz, signed 16bit, system byte order, stereo audio
+# using 1024 byte chunksize
+SDL::Mixer.open(44100, SDL::Mixer::DEFAULT_FORMAT, 2, 1024)
+
+EXCEPTION *
+
+SEEALSO
+Mixer.spec
+Mixer.allocate_channels
+
+%%
+NAME spec
+MOD Mixer
+TYPE .
+PURPOSE Get the actual audio format in use by the opened audio device
+RVAL [Integer, UINT, Integer]
+
+PROTO
+spec
+
+DESC
+Returns the actual audio format in use by the opened audio device.
+This may or may not match the parameters you passed to @[Mixer.open].
+Return value is array of three elements: [frequency, format, channels].
+
+EXAMPLE
+frequency, format, channels = SDL::Mixer.spec
+format_str = case format
+when SDL::Mixer::AUDIO_U8 then "U8"
+when SDL::Mixer::AUDIO_S8 then "S8"
+when SDL::Mixer::AUDIO_U16LSB then "U16LSB"
+when SDL::Mixer::AUDIO_S16LSB then "S16LSB"
+when SDL::Mixer::AUDIO_U16MSB then "U16MSB"
+when SDL::Mixer::AUDIO_S16MSB then "S16MSB"
+end
+
+printf "frequency=%dHz format=%s channels=%d", frequency, format_str, channels
+
+EXCEPTION *
+
+SEEALSO
+Mixer.open
+
+%%
+NAME driver_name
+MOD Mixer
+TYPE .
+PURPOSE Gets the audio device name
+RVAL String
+
+PROTO
+driver_name
+driverName
+
+DESC
+Returns the opened audio device name as String.
+
+EXCEPTION
+Raises @[Error] if audio playback system is not @[opened|Mixer.open] yet.
+
+SEEALSO
+Mixer.open
+
+%%
+NAME load
+MOD Mixer::Wave
+TYPE .
+PURPOSE Load file for use as a sample.
+RVAL Mixer::Wave
+
+PROTO
+load(filename)
+
+DESC
+Load file for use as a sample and returns the instance of @[Mixer::Wave].
+$[filename] is name of wave file to use.
+This can load WAVE, AIFF, RIFF, OGG, and VOC files.
+
+NOTES
+You must call @[Mixer.open] before calling this method.
+It must know the output characteristics so it can convert the sample for playback, it does
+this conversion at load time. Therefore you should pay attention to memory consumption.
+
+EXCEPTION *
+
+%%
+NAME load_from_io
+MOD Mixer::Wave
+TYPE .
+PURPOSE Read IO object for use as a sample.
+RVAL Mixer::Wave
+
+PROTO
+load_from_io(io)
+loadFromIO(io)
+
+DESC
+Read from Ruby's IO object (IO, StringIO or other objects with read, tell, rewind)
+and returns the instance of @[Mixer::Wave].
+This can read WAVE, AIFF, RIFF, OGG, and VOC files.
+
+NOTES
+You must call @[Mixer.open] before calling this method.
+It must know the output characteristics so it can convert the sample for playback, it does
+this conversion at load time. Therefore you should pay attention to memory consumption.
+
+EXCEPTION *
+
+%%
+NAME destroy
+MOD Mixer::Wave
+TYPE #
+PURPOSE Frees an audio chunk.
+
+PROTO
+destroy
+
+DESC
+Frees an audio chunk previously loaded.
+If this method is called, all operations are forbidden.
+
+SEEALSO
+Mixer::Wave#destroyed?
+
+%%
+NAME destroyed?
+MOD Mixer::Wave
+TYPE #
+PURPOSE Returns whether an audio chunk is destroyed.
+RVAL true/false
+
+PROTO
+destroyed?
+
+DESC
+Returns whether au audio chunk is destroyed by
+@[Mixer::Wave#destroy]
+
+SEEALSO
+Mixer::Wave#destroy
+
+%%
+NAME load
+MOD Mixer::Music
+TYPE .
+PURPOSE Load music file.
+RVAL Mixer::Music
+nn
+PROTO
+load(filename)
+
+DESC
+Load music file to use and returns a instance of @[Mixer::Music].
+$[filename] is a name of music file to use.
+This can load WAVE, MOD, MIDI, OGG, MP3, and any file that you use a command to
+play with.
+
+NOTES
+Need SMPEG library to load MP3.
+
+EXCEPTION *
+
+%%
+NAME load_from_string
+MOD Mixer::Music
+TYPE .
+PURPOSE Convert string into music data.
+RVAL Mixer::Music
+
+PROTO
+load_from_string(str)
+loadFromString(str)
+
+DESC
+Convert $[str] string into music data and returns a instance of @[Mixer::Music].
+This can load WAVE, MOD and OGG.
+
+NOTES
+In this method, copy $[str] and store it in returned object.
+Therefore this method may cause the large memory consumption.
+
+On Windows, it may be impossible to use this method.
+
+EXCEPTION *
+
+%%
+NAME destroy
+MOD Mixer::Music
+TYPE #
+PURPOSE Frees an music data.
+
+PROTO
+destroy
+
+DESC
+Frees an music data previously loaded.
+If this method is called, all operations are forbidden.
+
+SEEALSO
+Mixer::Music#destroyed?
+Mixer::Wave#destroy
+
+%%
+NAME destroyed?
+MOD Mixer::Music
+TYPE #
+PURPOSE Returns whether an music data is destroyed.
+RVAL true/false
+
+PROTO
+destroyed?
+
+DESC
+Returns whether a music data is destroyed by
+@[Mixer::Music#destroy]
+
+SEEALSO
+Mixer::Music#destroy
+Mixer::Wave#destroyed?
+
+%%
+NAME set_volume
+MOD Mixer::Wave
+TYPE #
+PURPOSE Set volume 
+
+PROTO
+set_volume(volume)
+setVolume(volume)
+
+DESC
+Set wave volume to $[volume]. $[volume] should be in 0..128.
+
+%%
+NAME allocate_channels
+MOD Mixer
+TYPE .
+PURPOSE Set the number of channels to mix
+RVAL Integer
+
+PROTO
+allocate_channels(num_channels)
+allocateChannels(num_channels)
+
+DESC
+Set the number of channels being mixed. This can be called
+multiple times, even with sounds playing. If numchans is less
+than the current number of channels, then the higher channels
+will be stopped, freed, and therefore not mixed any longer. It's
+probably not a good idea to change the size 1000 times a second
+though.
+
+NOTES
+passing in zero ((*will*)) free all mixing
+channels, however music will still play.
+
+RET
+Returns the number of channels allocated.
+
+EXAMPLE
+# allocate 16 mixing channels
+SDL::Mixer.allocate_channels(16)
+
+%%
+NAME set_volume
+MOD Mixer
+TYPE .
+PURPOSE Set the mix volume of a channel
+RVAL Integer
+
+PROTO
+set_volume(channel, volume)
+setVolume(channel, volume)
+
+DESC
+Set the $[volume] for any allocated $[channel]. 
+If $[channel] is -1 then
+all channels at are set at once. The volume is applied during
+the final mix, along with the sample volume. So setting this
+volume to 64 will halve the output of all samples played on the
+specified channel. All channels default to a volume of 128,
+which is the max. Newly allocated channels will have the max
+volume set, so setting all channels volumes does not affect
+subsequent channel allocations.
+
+RET
+Returns current volume of the channel. If channel is -1, the
+average volume is returned.
+
+SEEALSO
+Mixer::Wave#set_volume
+Mixer.set_volume_music
+
+%%
+NAME play_channel
+MOD Mixer
+TYPE .
+PURPOSE Play loop
+RVAL Integer
+
+PROTO
+play_channel(channel, wave, loops)
+playChannel(channel, wave, loops)
+
+DESC
+Play $[wave](instance of @[Mixer::Wave]  on $[channel], or 
+if $[channel] is -1, pick the first free
+unreserved channel. The sample will play 
+for $[loops]+1 number of
+times, unless stopped by halt, or fade out, or setting a new
+expiration time of less time than it would have originally taken
+to play the loops, or closing the mixer.
+if $[loops] is -1, loops infinitely.
+
+RET
+the channel the sample is played on.
+
+EXAMPLE
+# play sample on first free unreserved channel
+# play it exactly once through
+SDL::Mixer.play_channel(-1, sample, 0)
+
+SEEALSO
+Mixer.play_channel_timed
+Mixer.fade_in_channel
+Mixer.halt
+Mixer.expire
+
+%%
+NAME play_channel_timed
+MOD Mixer
+TYPE .
+PURPOSE Play loop and limit by time
+RVAL Integer
+
+PROTO
+play_channel_timed(channel, wave, loops, ticks)
+playChannelTimed(channel, wave, loops, ticks)
+
+DESC
+If the $[wave] is long enough and has enough $[loops] then the
+sample will stop after $[ticks] milliseconds. Otherwise this
+function is the same as @[Mixer.play_channel].
+
+EXAMPLE
+# play sample on first free unreserved channel
+# play it for half a second
+SDL::Mixer.play_channel(-1, sample, -1, 500)
+
+SEEALSO
+Mixer.play_channel
+Mixer.fade_in_channel_timed
+Mixer.fade_out
+Mixer.halt
+Mixer.expire
+
+%%
+NAME fade_in_channel
+MOD Mixer
+TYPE .
+PURPOSE Play loop with fade in
+RVAL Integer
+
+PROTO
+fade_in_channel(channel, wave, loops, ms)
+fadeInChannel(channel, wave, loops, ms)
+
+DESC
+Play $[wave] on $[channel] with fade in.
+The channel volume starts at 0 and fades up to full volume over
+$[ms] milliseconds of time. The sample may end before the fade-in
+is complete if it is too short or doesn't have enough loops.
+
+Otherwise this function is the same as @[Mixer.play_channel].
+
+EXAMPLE
+# play sample on first free unreserved channel
+# play it exactly 3 times through
+# fade in over one second
+SDL::Mixer.fade_in_channel(-1, sample, 2, 1000)
+
+SEEALSO
+Mixer.play_channel
+Mixer.fade_in_channel_timed
+Mixer.fading
+Mixer.fade_out
+Mixer.halt
+Mixer.expire
+
+%%
+NAME fade_in_channel_timed
+MOD Mixer
+TYPE .
+PURPOSE Play loop with fade in and limit by time
+RVAL Integer
+
+PROTO
+fade_in_channel_timed(channel, wave, loops, ms, ticks)
+fadeInChannelTimed(channel, wave, loops, ms, ticks)
+
+DESC
+If the sample is long enough and has enough loops then the
+sample will stop after ticks milliseconds. Otherwise this
+method is the same as @[Mixer.play_channel_timed].
+
+SEEALSO
+Mixer.play_channel_timed
+Mixer.fade_in_channel
+Mixer.fading
+Mixer.fade_out
+Mixer.halt
+Mixer.expire
+
+%%
+NAME pause
+MOD Mixer
+TYPE .
+PURPOSE Pause the channel
+
+PROTO
+pause(channel)
+
+DESC
+Pause $[channel], or all playing channels if -1 is passed in. You
+may still $[halt|Mixer.halt] a paused channel.
+
+EXAMPLE
+# pause all sample playback
+SDL::Mixer.pause(-1)
+
+SEEALSO
+Mixer.resume
+Mixer.pause?
+Mixer.halt
+
+%%
+NAME resume
+MOD Mixer
+TYPE .
+PURPOSE Resume a paused channel
+
+PROTO
+resume(channel)
+
+DESC
+Unpause $[channel], or all playing and paused channels if -1 is
+passed in.
+
+SEEALSO
+Mixer.pause
+Mixer.pause?
+
+%%
+NAME halt
+MOD Mixer
+TYPE .
+PURPOSE Stop playing on a channel
+
+PROTO
+halt(channel)
+
+DESC
+Halt channel playback, or all channels if -1 is passed in.
+Any callback set by Mix_ChannelFinished will be called.
+
+SEEALSO
+Mixer.expire
+Mixer.fade_out
+
+%%
+NAME expire
+MOD Mixer
+TYPE .
+PURPOSE Change the timed stoppage of a channel
+RVAL Integer
+
+PROTO
+expire(channel, ticks)
+
+DESC
+Halt $[channel] playback, or all channels 
+if -1 is passed in, after $[ticks] milliseconds.
+
+RET
+Returns the number of channels set to expire. Whether or not they
+are active.
+
+EXAMPLE
+# halt playback on all channels in 2 seconds
+SDL::Mixer.expire(-1, 2000)
+
+SEEALSO
+Mixer.halt
+Mixer.fade_out
+
+%%
+NAME fade_out
+MOD Mixer
+TYPE .
+PURPOSE Stop playing channel after timed fade out
+RVAL Integer
+
+PROTO
+fade_out(channel, ms)
+fadeOut(channel, ms)
+
+DESC
+Gradually fade out which $[channel]
+ over $[ms] milliseconds starting
+from now. The channel will be halted after the fade out is
+completed. Only channels that are playing are set to fade out,
+including paused channels. 
+
+RET
+Returns the number of channels set to fade out.
+
+EXAMPLE
+# fade out all channels to finish 3 seconds from now
+printf "starting fade out of %d channels", SDL::Mixer.fade_out(-1, 3000)
+
+SEEALSO
+Mixer.fade_in_channel
+Mixer.fade_in_channel_timed
+Mixer.fading
+
+%%
+NAME play?
+MOD Mixer
+TYPE .
+PURPOSE Get the active playing status of a channel
+RVAL true/false
+
+PROTO
+play?(channel)
+
+DESC
+Returns true if $[channel] is playing, otherwise
+returns false.
+
+SEEALSO
+Mixer.pause?
+Mixer.fading
+Mixer.play_channel
+Mixer.pause
+
+%%
+NAME playing_channels
+MOD Mixer
+TYPE .
+PURPOSE Get the number of active playing channels
+RVAL Integer
+
+PROTO
+playing_channels
+playingChannels
+
+DESC
+Returns the number of playing.
+
+SEEALSO
+Mixer.pause?
+Mixer.fading
+Mixer.play_channel
+Mixer.pause
+
+%%
+NAME pause?
+MOD Mixer
+TYPE .
+PURPOSE Get the pause status of a channel
+RVAL true/false
+
+PROTO
+pause?(channel)
+
+DESC
+Returns true if $[channel] is paused, otherwise 
+returns false.
+
+SEEALSO
+Mixer.play?
+Mixer.pause
+Mixer.resume
+
+%%
+NAME fading
+MOD Mixer
+TYPE .
+PURPOSE Get the fade status of a channel
+RVAL Integer
+
+PROTO
+fading(which)
+
+DESC
+Tells you if which $[channel] is fading in, out, or not. Does not
+tell you if the channel is playing anything, or paused, so you'd
+need to test that separately.
+Returns the fading status:
+* SDL::Mixer::FADING_OUT
+* SDL::Mixer::FADING_IN
+* SDL::Mixer::NO_FADING
+
+SEEALSO
+Mixer.play?
+Mixer.pause?
+Mixer.fade_in_channel
+Mixer.fade_in_channel_timed
+Mixer.fade_out
+
+%%
+NAME play_music
+MOD Mixer
+TYPE .
+PURPOSE Play music, with looping
+
+PROTO
+play_music(music, loops)
+playMusic(music, loops)
+
+DESC
+Play the loaded $[music]
+$[loops] times through from start to finish.
+The previous music will be halted, or if fading out it waits
+(blocking) for that to finish.
+
+EXCEPTION *
+
+SEEALSO
+Mixer.fade_in_music
+
+%%
+NAME fade_in_music
+vMOD Mixer
+TYPE .
+PURPOSE Play music, with looping, and fade in
+
+PROTO
+fade_in_music(music, loops, ms)
+fadeInMusic(music, loops, ms)
+
+DESC
+Fade in over $[ms] milliseconds of time, 
+the loaded $[music], playing
+it $[loops] times through from start to finish.
+The fade in effect only applies to the first loop.
+Any previous music will be halted, or if it is fading out it
+will wait (blocking) for the fade to complete.
+
+EXCEPTION *
+
+SEEALSO
+Mixer.play_music
+
+%%
+NAME set_volume_music
+MOD Mixer
+TYPE .
+PURPOSE Set music volume
+
+PROTO
+set_volume_music(volume)
+setVolumeMusic(volume)
+
+DESC
+Set the volume to $[volume], if it is 0 or greater.
+Setting the volume during a fade will
+not work, the faders use this function to perform their effect!
+
+SEEALSO
+Mixer.fade_in_music
+Mixer.fade_out_music
+
+%%
+NAME pause_music
+MOD Mixer
+TYPE .
+PURPOSE Pause music
+
+PROTO
+pause_music
+pauseMusic
+
+DESC
+Pause the music playback. You may @[halt|Mixer.halt_music]
+paused music.
+
+SEEALSO
+Mixer.resume_music
+Mixer.pause_music?
+Mixer.halt_music
+
+%%
+NAME resume_music
+MOD Mixer
+TYPE .
+PURPOSE Resume paused music
+
+PROTO
+resume_music
+resumeMusic
+
+DESC
+Unpause the music. This is safe to use on halted, paused, and
+already playing music.
+
+
+SEEALSO
+Mixer.pause_music
+Mixer.pause_music?
+
+%%
+NAME rewind_music
+MOD Mixer
+TYPE .
+PURPOSE Rewind music to beginning
+
+PROTO
+rewind_music
+rewindMusic
+
+DESC
+Rewind the music to the start. This is safe to use on halted,
+paused, and already playing music. It is not useful to rewind
+the music immediately after starting playback, because it starts
+at the beginning by default.
+
+This function only works for these streams: MOD, OGG, MP3,
+Native MIDI.
+
+%%
+NAME halt_music
+MOD Mixer
+TYPE .
+PURPOSE Stop music playback
+
+PROTO
+halt_music
+haltMusic
+
+DESC
+Halt playback of music. This interrupts music fader effects. 
+
+SEEALSO
+Mixer.fade_out_music
+
+%%
+NAME fade_out_music
+MOD Mixer
+TYPE .
+PURPOSE Stop music, with fade out
+
+PROTO
+fade_out_music(ms)
+fadeOutMusic(ms)
+
+DESC
+Gradually fade out the music over $[ms] milliseconds starting from
+now. The music will be halted after the fade out is completed.
+Only when music is playing and not fading already are set to
+fade out, including paused channels.
+
+%%
+NAME play_music?
+MOD Mixer
+TYPE .
+PURPOSE Test whether music is playing
+RVAL true/false
+
+PROTO
+play_music?
+playMusic?
+
+DESC
+Returns true if music is actively playing, otherwise
+returns false.
+
+SEEALSO
+Mixer.pause_music?
+Mixer.fading_music
+Mixer.play_music
+
+%%
+NAME pause_music?
+MOD Mixer
+TYPE .
+PURPOSE Test whether music is paused
+RVAL true/false
+
+PROTO
+pause_music?
+pauseMusic?
+
+DESC
+Returns true if music is paused, otherwise returns false.
+
+SEEALSO
+Mixer.play_music?
+Mixer.pause_music
+Mixer.resume_music
+
+%%
+NAME fading_music
+MOD Mixer
+TYPE .
+PURPOSE Get status of current music fade activity
+RVAL Integer
+
+PROTO
+fading_music
+fadingMusic
+
+DESC
+Tells you if music is fading in, out, or not at all. Does not
+tell you if the channel is playing anything, or paused, so you'd
+need to test that separately.
+
+return value is one of follwoing:
+* SDL::Mixer::FADING_OUT
+* SDL::Mixer::FADING_IN
+* SDL::Mixer::NO_FADING
+
+SEEALSO
+Mixer.fading
+Mixer.pause_music?
+Mixer.play_music?
+Mixer.fade_out_music
+

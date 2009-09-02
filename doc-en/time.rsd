@@ -1,0 +1,46 @@
+= Time
+TOC
+SDL provides several cross-platform functions for dealing with
+time.
+It provides a way to get the current time
+and a way to wait a little while.
+
+==Methods
+%%%
+NAME get_ticks
+TYPE .
+PURPOSE Get the number of milliseconds since the SDL library initialization
+RVAL UINT
+
+PROTO
+get_ticks
+getTicks
+
+DESC
+Get the number of milliseconds since @[init] is called
+Note that this value wraps if the program runs
+for more than ~49 days.
+
+SEEALSO
+delay
+
+%%
+NAME delay
+TYPE .
+PURPOSE Wait a specified number of milliseconds before returning
+
+PROTO
+delay(ms)
+
+DESC
+Wait a specified number of milliseconds before returning.
+This method will wait ((*at least*)) the specified time, 
+but possible longer due to OS scheduling.
+
+NOTES
+Count on a delay granularity of ((*at least*)) 10 ms. Some
+platforms have shorter clock ticks but this is the most
+common.
+
+Ruby's threads cannot preempt while waiting with this method.
+You can use Kernel#sleep instead.

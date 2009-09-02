@@ -1,0 +1,200 @@
+= Collision Detection
+* ((<Collision Detection outline>))
+* ((<SDL::CollisionMap>))
+
+* ((<Collision Detection Methods>))
+TOC
+
+== Collision Detection outline
+Ruby/SDL has collision detection system
+derived from 
+((<SGE|URL:http://www.etek.chalmers.se/~e8cal1/sge/index.html>)).
+This enables you to pixel-pixel checking after
+creating binary image by  @[Surface#make_collision_map].
+
+Please see sample/collision.rb too.
+
+== SDL::CollisionMap
+This class represents binary image used by collision 
+detections.
+You can create this instance only by 
+@[Surface#make_collision_map].
+
+METHODS(CollisionMap)
+
+== Collision Detection Methods
+%%%
+NAME make_collision_map
+MOD Surface
+TYPE #
+DEP SGE
+PURPOSE Creates a new collision map
+RVAL SDL::CollisionMap
+
+PROTO
+make_collision_map
+makeCollisionMap
+
+DESC
+Creates a new collision map from @[Surface] object.
+Use @[Surface#set_color_key] before calling this method.
+Every non-transparent pixel is set to
+solid in the collision map. 
+
+Returns a new @[CollisionMap] object.
+
+EXCEPTION *
+
+SEEALSO
+Surface#set_color_key
+CollisionMap#collision_check
+CollisionMap#clear
+CollisionMap#set
+
+%%
+NAME collision_check
+MOD CollisionMap
+TYPE #
+DEP SGE
+PURPOSE Does pixel collision detection.
+RVAL true/false
+
+PROTO
+collision_check(x1, y1, cmap, x2, y2)
+
+DESC
+Does pixel perfect collision detection with 
+$[self] and $[cmap]. 
+The ($[x1],$[y1]) and ($[x2],$[y2])
+coords are the positions of the upper left corners of the
+images. Returns true if any solid
+pixels of the two images overlap or else false.
+
+This method calls @[CollisionMap#bounding_box_check] 
+internally.
+
+SEEALSO
+CollisionMap#bounding_box_check
+
+%%
+NAME bounding_box_check
+MOD CollisionMap
+TYPE .
+DEP SGE
+PURPOSE Checks if two shapes overlap.
+RVAL true/false
+
+PROTO
+bounding_box_check(x1,y1,w1,h1,x2,y2,w2,h2)
+boundingBoxCheck(x1,y1,w1,h1,x2,y2,w2,h2)
+
+DESC
+
+Checks if two rectangles 
+($[x1], $[$y1], $[w1], $[h1]) and
+($[x2], $[$y2], $[w2], $[h2]) overlap.
+
+RET
+Returns true if two rectangles overlap, otherwise
+returns false.
+
+SEEALSO
+CollisionMap#bounding_box_check
+
+%%
+NAME bounding_box_check
+MOD CollisionMap
+TYPE #
+DEP SGE
+PURPOSE Checks if two shapes overlap.
+RVAL true/false
+
+PROTO
+bounding_box_check(x1, y1, cmap, x2, y2)
+boundingBoxCheck(x1, y1, cmap, x2, y2)
+
+DESC
+
+Checks if two rectangles 
+(the bounding boxes, $[self] and $[cmap]) overlap. 
+The ($[x1],$[y1]) and ($[x2],$[y2])
+coords are the positions of the upper left corners of the
+images.
+
+RET
+Returns true if two rectangles overlap, otherwise
+returns false.
+
+SEEALSO
+CollisionMap.bounding_box_check
+CollisionMap#collision_check
+CollisionMap#w
+CollisionMap#h
+
+%%
+NAME clear
+MOD CollisionMap
+TYPE #
+DEP SGE
+PURPOSE Clears an area in the collision map
+
+PROTO
+clear(x, y, w, h)
+
+DESC
+Clears an area in the collision map from anything solid.
+
+SEEALSO
+CollisionMap#set
+
+%%
+NAME set
+MOD CollisionMap
+TYPE #
+DEP SGE
+PURPOSE Makes an area in the collision map solid
+
+PROTO
+set(x, y, w, h)
+
+DESC
+Makes an area in the collision map solid.
+
+SEEALSO
+CollisionMap#set
+
+%%
+NAME w
+MOD CollisionMap
+TYPE #
+DEP SGE
+PURPOSE Gets width of collision map
+RVAL Integer
+
+PROTO
+w
+
+DESC
+Returns width of collision map.
+
+SEEALSO
+CollisionMap#h
+
+%%
+NAME h
+MOD CollisionMap
+TYPE #
+DEP SGE
+PURPOSE Get height of collision map
+RVAL Integer
+
+PROTO
+h
+
+DESC
+Returns height of collision map.
+
+
+SEEALSO
+CollisionMap#w
+

@@ -1,7 +1,7 @@
 /*
   Ruby/SDL   Ruby extension library for SDL
 
-  Copyright (C) 2001-2004 Ohbayashi Ippei
+  Copyright (C) 2001-2007 Ohbayashi Ippei
   
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -100,8 +100,27 @@ static VALUE Context_input(VALUE self, VALUE event)
 static VALUE Context_str(VALUE self)
 {
   char cstr[10000];
+#ifdef ENABLE_M17N
+  rb_encoding* enc;
+  switch (SDLSKK_get_encoding()) {
+  case SDLSKK_UTF8:
+    enc = utf8_enc;
+  case SDLSKK_EUCJP:
+    enc = eucjp_enc;
+    break;
+  case SDLSKK_SJIS:
+    enc = sjis_enc;
+    break;
+  default:
+    rb_raise(eSDLError, "SDLSKK encoding error");
+  }
+#endif
   SDLSKK_Context_get_str(Get_SDLSKK_Context(self), cstr, sizeof(cstr));
+#ifdef ENABLE_M17N
+  return ENC_STR_NEW2(cstr, enc);
+#else
   return rb_str_new2(cstr);
+#endif
 }
 
 static VALUE render_str(VALUE self, VALUE font, VALUE r, VALUE g, VALUE b,
@@ -169,8 +188,8 @@ static VALUE Dictionary_load(VALUE self, VALUE filename, VALUE users)
   rb_secure(4);
   SafeStringValue(filename);
   
-  if(!SDLSKK_Dict_load(dict, RSTRING(filename)->ptr, RTEST(users)))
-    rb_raise(eSDLError, "Couldn't load %s", RSTRING(filename)->ptr);
+  if(!SDLSKK_Dict_load(dict, RSTRING_PTR(filename), RTEST(users)))
+    rb_raise(eSDLError, "Couldn't load %s", RSTRING_PTR(filename));
 
   return Qnil;
 }
@@ -181,8 +200,8 @@ static VALUE Dictionary_save(VALUE self, VALUE filename)
   rb_secure(4);
   SafeStringValue(self);
   
-  if(!SDLSKK_Dict_save_user_dict(dict, RSTRING(filename)->ptr))
-    rb_raise(eSDLError, "Couldn't save %s", RSTRING(filename)->ptr);
+  if(!SDLSKK_Dict_save_user_dict(dict, RSTRING_PTR(filename)))
+    rb_raise(eSDLError, "Couldn't save %s", RSTRING_PTR(filename));
   return Qnil;
 }
 
@@ -192,10 +211,10 @@ static VALUE RomKanaRuleTable_s_new(VALUE klass, VALUE table_file)
   rb_secure(4);
   SafeStringValue(table_file);
   
-  rule_table = SDLSKK_RomKanaRuleTable_new(RSTRING(table_file)->ptr);
+  rule_table = SDLSKK_RomKanaRuleTable_new(RSTRING_PTR(table_file));
 
   if(rule_table == NULL)
-    rb_raise(eSDLError, "Couldn't load %s", RSTRING(table_file)->ptr);
+    rb_raise(eSDLError, "Couldn't load %s", RSTRING_PTR(table_file));
   
   return Data_Wrap_Struct(klass, 0, SDLSKK_RomKanaRuleTable_delete, rule_table);
 }
