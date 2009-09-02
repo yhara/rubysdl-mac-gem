@@ -1,4 +1,0 @@
-#!/usr/bin/env ruby
-rsdl_path = File.expand_path("../rsdl/rsdl", File.dirname(__FILE__))
-
-exec rsdl_path, *ARGV
