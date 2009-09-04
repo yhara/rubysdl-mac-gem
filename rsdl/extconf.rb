@@ -23,7 +23,10 @@ config['LIBPATH'] = RbConfig::expand(libpathflag)
 config['LIBRUBYARG'] = Config::CONFIG['LIBRUBYARG']
 config['EXEEXT']     = Config::CONFIG['EXEEXT']
 config['bindir'] = Config::CONFIG['bindir']
-config['RSDL']   = Config::CONFIG['RUBY_INSTALL_NAME'].sub(/ruby/, 'rsdl')
+
+# Do not append program suffix; it is gem's work
+#config['RSDL']   = Config::CONFIG['RUBY_INSTALL_NAME'].sub(/ruby/, 'rsdl')
+config['RSDL'] = "rsdl"
 
 headers = []
 headers << '#define HAVE_RUBY_SYSINIT 1'  if have_func('ruby_sysinit')
