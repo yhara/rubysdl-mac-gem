@@ -22,7 +22,8 @@ clean:
 	<%= config['RMALL'] %> $(PROGRAM) $(OBJS)
 
 install:
-	<%= config['INSTALL'] %> $(PROGRAM) <%= config['bindir'] %>
+# do nothing
+#	<%= config['INSTALL'] %> $(PROGRAM) <%= config['bindir'] %>
 
 $(PROGRAM): $(OBJS)
 	$(CC) $(OBJS) $(LIBPATH) $(LDFLAGS) $(LIBRUBYARG) $(LIBS) -o $@
